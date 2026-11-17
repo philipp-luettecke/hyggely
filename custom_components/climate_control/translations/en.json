@@ -70,6 +70,57 @@
       }
     }
   },
+  "config_subentries": {
+    "room": {
+      "entry_type": "Room",
+      "initiate_flow": {
+        "user": "Add room",
+        "reconfigure": "Change room"
+      },
+      "step": {
+        "user": {
+          "title": "Add room",
+          "description": "Only give the room thermostats to the HomeKit Bridge, not the TRVs, so that Apple Home shows a single thermostat per room.",
+          "data": {
+            "name": "Name",
+            "trvs": "Radiator thermostat",
+            "schedule": "Schedule",
+            "comfort_temperature": "Comfort temperature",
+            "eco_temperature": "Eco temperature",
+            "area": "Area"
+          },
+          "data_description": {
+            "trvs": "The radiator thermostat (TRV) this room controls.",
+            "schedule": "Schedule helper of the room. Comfort applies during its blocks, eco outside.",
+            "comfort_temperature": "Target temperature during a block of the schedule.",
+            "eco_temperature": "Target temperature outside the blocks of the schedule.",
+            "area": "The room appears as a device in this area."
+          }
+        },
+        "reconfigure": {
+          "title": "Change room",
+          "data": {
+            "name": "Name",
+            "trvs": "Radiator thermostat",
+            "schedule": "Schedule",
+            "comfort_temperature": "Comfort temperature",
+            "eco_temperature": "Eco temperature",
+            "area": "Area"
+          },
+          "data_description": {
+            "trvs": "The radiator thermostat (TRV) this room controls.",
+            "schedule": "Schedule helper of the room. Comfort applies during its blocks, eco outside.",
+            "comfort_temperature": "Target temperature during a block of the schedule.",
+            "eco_temperature": "Target temperature outside the blocks of the schedule.",
+            "area": "The room appears as a device in this area."
+          }
+        }
+      },
+      "abort": {
+        "reconfigure_successful": "The room was changed."
+      }
+    }
+  },
   "selector": {
     "override_expiry_policy": {
       "options": {

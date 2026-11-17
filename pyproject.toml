@@ -56,6 +56,10 @@ ignore = [
     "PLR2004",
 ]
 
+[tool.ruff.lint.per-file-ignores]
+# Scenario helpers take a room's settings and pytest fixtures as arguments.
+"tests/**" = ["PLR0913"]
+
 [tool.ruff.lint.isort]
 force-sort-within-sections = true
 known-first-party = ["custom_components.climate_control", "tests"]
