@@ -226,5 +226,10 @@
     "vacation_end_not_ahead": {
       "message": "Urlaub braucht ein Urlaubsende in der Zukunft. Setze zuerst das Urlaubsende."
     }
+  },
+  "common": {
+    "notification_title": "Heizung",
+    "window_open": "Fenster seit über {minutes} min offen: {rooms}",
+    "trv_offline": "Heizkörperthermostat seit über {minutes} min nicht erreichbar: {trvs}"
   }
 }
