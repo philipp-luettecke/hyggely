@@ -148,7 +148,7 @@ class SimulatedTrv(ClimateEntity):
         )
         self._attr_hvac_mode = hvac_mode
         self._setpoint = target_temperature
-        self._device_mode = hvac_mode
+        self._device_mode: HVACMode | None = hvac_mode
         self._device_setpoint = target_temperature
         self._attr_native_current_temperature = current_temperature
         self._invalid_mode = False
