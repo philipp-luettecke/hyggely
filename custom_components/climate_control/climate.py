@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from homeassistant.components.climate import (
+    ATTR_HVAC_MODE,
     ClimateEntity,
     ClimateEntityFeature,
     HVACMode,
@@ -93,7 +94,15 @@ class RoomClimate(ClimateEntity):
         }
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
-        """Override the room with the new temperature."""
+        """Override the room with the new temperature.
+
+        An `hvac_mode` sent along wins: off and auto switch the room mode and
+        drop the temperature.
+        """
+        hvac_mode = kwargs.get(ATTR_HVAC_MODE)
+        if hvac_mode in (HVACMode.OFF, HVACMode.AUTO):
+            await self._controller.async_set_room_mode(RoomMode(hvac_mode))
+            return
         await self._controller.async_set_override(float(kwargs[ATTR_TEMPERATURE]))
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:

@@ -36,4 +36,6 @@ Spec: `.scratch/heating-control/spec.md`
 
 **Tests:** `scenario.shut_down()`/`start_up()` simulieren den Neustart (Eintrag entladen, Zeit vorspulen, neu einrichten). Dabei bleibt nur der Speicher erhalten. `living_room()` nimmt `global_settings`, `add_main_entry()` beliebige globale Einstellungen, und `LivingRoom.call()` ruft eine `climate`-Aktion am Raum-Thermostat auf.
 
+**Nachtrag (Review): `set_temperature` mit `hvac_mode`.** HA 2026.11 reicht ein mitgeschicktes `hvac_mode` unverändert an `async_set_temperature` weiter (ohne Prüfung gegen die angebotenen Modi). Bisher wurde es verworfen. Jetzt gilt: `off` schaltet den Raum aus (wie `set_hvac_mode(off)`, bis zum nächsten Schaltpunkt), `auto` kehrt sofort zum Zeitplan zurück; die Temperatur wird in beiden Fällen ignoriert. `heat`, kein Modus oder ein nicht angebotener Modus übersteuern wie bisher mit der Temperatur. Tests in `tests/test_override.py`.
+
 **Abgeschlossen:** Merge-Commit `1b049d5` auf `feat/heating-control`. Ergebnis: Übersteuerung über das Raum-Thermostat mit Rückfallregeln `next_block`/`duration`/`earliest` (global und pro Raum), Rückfallzeitpunkt als Attribut, Wiederherstellung nach Neustart; 98 Tests grün.
