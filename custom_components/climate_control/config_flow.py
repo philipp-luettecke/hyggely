@@ -24,7 +24,9 @@ from .const import (
     CONF_COMFORT_TEMPERATURE,
     CONF_ECO_TEMPERATURE,
     CONF_FROST_TEMPERATURE,
+    CONF_LEAD_TIME,
     CONF_NAME,
+    CONF_NIGHT_TEMPERATURE,
     CONF_NOTIFY_TARGETS,
     CONF_OVERRIDE_EXPIRY_DURATION,
     CONF_OVERRIDE_EXPIRY_POLICY,
@@ -40,6 +42,8 @@ from .const import (
     DEFAULT_COMFORT_TEMPERATURE,
     DEFAULT_ECO_TEMPERATURE,
     DEFAULT_FROST_TEMPERATURE,
+    DEFAULT_LEAD_TIME,
+    DEFAULT_NIGHT_TEMPERATURE,
     DEFAULT_OVERRIDE_EXPIRY_DURATION,
     DEFAULT_OVERRIDE_EXPIRY_POLICY,
     DEFAULT_QUIET_END,
@@ -126,8 +130,14 @@ def _room_schema() -> probatio.Schema:
                 CONF_COMFORT_TEMPERATURE, default=DEFAULT_COMFORT_TEMPERATURE
             ): _temperature_selector(),
             probatio.Required(
+                CONF_NIGHT_TEMPERATURE, default=DEFAULT_NIGHT_TEMPERATURE
+            ): _temperature_selector(),
+            probatio.Required(
                 CONF_ECO_TEMPERATURE, default=DEFAULT_ECO_TEMPERATURE
             ): _temperature_selector(),
+            probatio.Required(
+                CONF_LEAD_TIME, default=DEFAULT_LEAD_TIME
+            ): selector.DurationSelector(),
             probatio.Required(CONF_AREA): selector.AreaSelector(),
         }
     )
