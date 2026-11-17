@@ -227,6 +227,11 @@ class RoomController:
         return None
 
     @property
+    def window_open_since(self) -> datetime | None:
+        """Return since when the window of the room is open; None while closed."""
+        return self._window.open_since
+
+    @property
     def offline_trvs(self) -> frozenset[str]:
         """Return the TRVs of the room unreachable for longer than 30 minutes."""
         return self._reachability.offline

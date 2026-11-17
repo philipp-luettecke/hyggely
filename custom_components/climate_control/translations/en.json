@@ -206,5 +206,10 @@
       "title": "Radiator thermostat {trv} unreachable",
       "description": "The radiator thermostat {trv} in room {room} has been unreachable for more than 30 minutes, so it does not get new targets. Check the tado bridge and the batteries of the thermostat. This issue disappears by itself once the thermostat is reachable again."
     }
+  },
+  "common": {
+    "notification_title": "Heating",
+    "window_open": "Window open for more than {minutes} min: {rooms}",
+    "trv_offline": "Radiator thermostat unreachable for more than {minutes} min: {trvs}"
   }
 }

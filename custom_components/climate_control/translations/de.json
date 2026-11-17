@@ -206,5 +206,10 @@
       "title": "Heizkörperthermostat {trv} nicht erreichbar",
       "description": "Das Heizkörperthermostat {trv} im Raum {room} ist seit über 30 Minuten nicht erreichbar und bekommt deshalb keine neuen Sollwerte. Prüfe die tado-Bridge und die Batterien des Thermostats. Der Hinweis verschwindet von selbst, sobald das Thermostat wieder erreichbar ist."
     }
+  },
+  "common": {
+    "notification_title": "Heizung",
+    "window_open": "Fenster seit über {minutes} min offen: {rooms}",
+    "trv_offline": "Heizkörperthermostat seit über {minutes} min nicht erreichbar: {trvs}"
   }
 }

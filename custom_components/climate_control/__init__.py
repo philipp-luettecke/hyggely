@@ -12,6 +12,7 @@ from homeassistant.helpers import device_registry as dr
 
 from .command_pacer import CommandPacer
 from .const import CONF_AREA, CONF_AWAY_DELAY, CONF_PERSONS, DOMAIN, SUBENTRY_TYPE_ROOM
+from .notifier import Notifier
 from .presence import Presence
 from .repair_issues import async_track_offline_trvs
 from .room_controller import RoomController
@@ -62,6 +63,10 @@ async def async_setup_entry(
         entry.async_on_unload(controller.async_stop)
         entry.async_on_unload(async_track_offline_trvs(hass, entry, controller))
         await controller.async_start()
+
+    notifier = Notifier(hass, entry, entry.runtime_data.rooms)
+    entry.async_on_unload(notifier.async_stop)
+    notifier.async_start()
 
     entry.async_on_unload(entry.add_update_listener(_async_reload))
 
