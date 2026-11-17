@@ -17,9 +17,7 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Add the house mode entity to the house device."""
-    async_add_entities(
-        [HouseModeSelect(entry.entry_id, entry.runtime_data.house_mode)]
-    )
+    async_add_entities([HouseModeSelect(entry.entry_id, entry.runtime_data.house_mode)])
 
 
 class HouseModeSelect(SelectEntity):
