@@ -16,10 +16,17 @@ from typing import Any
 
 
 class Level(StrEnum):
-    """Schedule levels; eco applies outside blocks."""
+    """Named temperature tiers.
+
+    Schedule levels are comfort, night and eco (outside blocks); away and frost
+    are global.
+    """
 
     COMFORT = "comfort"
+    NIGHT = "night"
     ECO = "eco"
+    AWAY = "away"
+    FROST = "frost"
 
 
 class RoomMode(StrEnum):
@@ -83,10 +90,11 @@ class Reason:
 
 @dataclass(frozen=True, kw_only=True)
 class Decision:
-    """Outcome for one room."""
+    """Outcome for one room; `level` is None while the target follows no level."""
 
     room_mode: RoomMode
     target_temperature: float
+    level: Level | None
     trv_mode: TrvMode
     reason: Reason
     reevaluate_at: datetime | None
@@ -105,6 +113,7 @@ def resolve(snapshot: RoomSnapshot) -> Decision:
         return Decision(
             room_mode=RoomMode.OFF,
             target_temperature=snapshot.frost_temperature,
+            level=Level.FROST,
             trv_mode=TrvMode.OFF,
             reason=Reason(code=ReasonCode.ROOM_OFF, params={"until": expires_at}),
             reevaluate_at=reevaluate_at,
@@ -113,6 +122,7 @@ def resolve(snapshot: RoomSnapshot) -> Decision:
         return Decision(
             room_mode=RoomMode.HEAT,
             target_temperature=snapshot.override_temperature,
+            level=None,
             trv_mode=TrvMode.HEAT,
             reason=Reason(code=ReasonCode.OVERRIDE, params={"until": expires_at}),
             reevaluate_at=reevaluate_at,
@@ -121,6 +131,7 @@ def resolve(snapshot: RoomSnapshot) -> Decision:
         return Decision(
             room_mode=RoomMode.AUTO,
             target_temperature=snapshot.away_temperature,
+            level=Level.AWAY,
             trv_mode=TrvMode.HEAT,
             reason=Reason(code=ReasonCode.AWAY),
             reevaluate_at=schedule.next_block_boundary,
@@ -128,6 +139,7 @@ def resolve(snapshot: RoomSnapshot) -> Decision:
     return Decision(
         room_mode=RoomMode.AUTO,
         target_temperature=snapshot.level_temperatures[schedule.level],
+        level=schedule.level,
         trv_mode=TrvMode.HEAT,
         reason=Reason(
             code=ReasonCode.SCHEDULE,

@@ -63,7 +63,9 @@ ROOM_SETTINGS = [
     "trvs",
     "schedule",
     "comfort_temperature",
+    "night_temperature",
     "eco_temperature",
+    "lead_time",
     "area",
 ]
 

@@ -41,11 +41,15 @@ CONF_NAME: Final = "name"
 CONF_TRVS: Final = "trvs"
 CONF_SCHEDULE: Final = "schedule"
 CONF_COMFORT_TEMPERATURE: Final = "comfort_temperature"
+CONF_NIGHT_TEMPERATURE: Final = "night_temperature"
 CONF_ECO_TEMPERATURE: Final = "eco_temperature"
+CONF_LEAD_TIME: Final = "lead_time"
 CONF_AREA: Final = "area"
 
 DEFAULT_COMFORT_TEMPERATURE: Final = 21.0
+DEFAULT_NIGHT_TEMPERATURE: Final = 17.0
 DEFAULT_ECO_TEMPERATURE: Final = 18.0
+DEFAULT_LEAD_TIME: Final = {"hours": 0, "minutes": 0, "seconds": 0}
 
 TRV_MIN_TEMPERATURE: Final = 5.0
 TRV_MAX_TEMPERATURE: Final = 25.0
