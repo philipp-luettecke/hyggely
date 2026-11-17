@@ -11,7 +11,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 
 from .command_pacer import CommandPacer
-from .const import CONF_AREA, CONF_AWAY_DELAY, CONF_PERSONS, DOMAIN, SUBENTRY_TYPE_ROOM
+from .const import CONF_AREA, CONF_PRESENCE_DELAY, CONF_PERSONS, DOMAIN, SUBENTRY_TYPE_ROOM
 from .house_mode import HouseModeController, async_remove_house_mode
 from .notifier import Notifier, async_remove_sent_alerts
 from .presence import Presence
@@ -48,7 +48,7 @@ async def async_setup_entry(
     presence = Presence(
         hass,
         entry.options[CONF_PERSONS],
-        timedelta(**entry.options[CONF_AWAY_DELAY]),
+        timedelta(**entry.options[CONF_PRESENCE_DELAY]),
     )
     pacer = CommandPacer(hass, entry)
     house_mode = HouseModeController(hass, entry)

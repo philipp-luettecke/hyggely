@@ -19,7 +19,7 @@ import probatio
 
 from .const import (
     CONF_AREA,
-    CONF_AWAY_DELAY,
+    CONF_PRESENCE_DELAY,
     CONF_AWAY_TEMPERATURE,
     CONF_COMFORT_TEMPERATURE,
     CONF_ECO_TEMPERATURE,
@@ -38,7 +38,7 @@ from .const import (
     CONF_VACATION_TEMPERATURE,
     CONF_WINDOW_CONTACTS,
     CONF_WINDOW_DELAY,
-    DEFAULT_AWAY_DELAY,
+    DEFAULT_PRESENCE_DELAY,
     DEFAULT_AWAY_TEMPERATURE,
     DEFAULT_COMFORT_TEMPERATURE,
     DEFAULT_ECO_TEMPERATURE,
@@ -80,7 +80,7 @@ def _global_settings_schema() -> probatio.Schema:
                 selector.EntitySelectorConfig(domain="person", multiple=True)
             ),
             probatio.Required(
-                CONF_AWAY_DELAY, default=DEFAULT_AWAY_DELAY
+                CONF_PRESENCE_DELAY, default=DEFAULT_PRESENCE_DELAY
             ): selector.DurationSelector(),
             probatio.Optional(CONF_NOTIFY_TARGETS, default=[]): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="notify", multiple=True)

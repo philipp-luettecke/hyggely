@@ -6,7 +6,7 @@
         "description": "Globale Einstellungen, die für alle Räume gelten. Du kannst sie später in den Optionen ändern.",
         "data": {
           "persons": "Personen",
-          "away_delay": "Abwesend-Verzögerung",
+          "presence_delay": "Abwesend-Verzögerung",
           "notify_targets": "Benachrichtigungsempfänger",
           "quiet_start": "Beginn der Ruhezeit",
           "quiet_end": "Ende der Ruhezeit",
@@ -19,7 +19,7 @@
         },
         "data_description": {
           "persons": "Das Haus gilt als abwesend, wenn keine dieser Personen zu Hause ist.",
-          "away_delay": "So lange müssen alle Personen weg sein, bevor das Haus absenkt.",
+          "presence_delay": "So lange müssen alle Personen weg sein, bevor das Haus absenkt.",
           "notify_targets": "Benachrichtigungs-Entitäten, die Nachrichten erhalten, z. B. eure Handys.",
           "quiet_start": "Ab dieser Uhrzeit werden keine Nachrichten gesendet.",
           "quiet_end": "Zu dieser Uhrzeit werden zurückgehaltene Nachrichten gesendet, die noch zutreffen.",
@@ -43,7 +43,7 @@
         "description": "Globale Einstellungen, die für alle Räume gelten.",
         "data": {
           "persons": "Personen",
-          "away_delay": "Abwesend-Verzögerung",
+          "presence_delay": "Abwesend-Verzögerung",
           "notify_targets": "Benachrichtigungsempfänger",
           "quiet_start": "Beginn der Ruhezeit",
           "quiet_end": "Ende der Ruhezeit",
@@ -56,7 +56,7 @@
         },
         "data_description": {
           "persons": "Das Haus gilt als abwesend, wenn keine dieser Personen zu Hause ist.",
-          "away_delay": "So lange müssen alle Personen weg sein, bevor das Haus absenkt.",
+          "presence_delay": "So lange müssen alle Personen weg sein, bevor das Haus absenkt.",
           "notify_targets": "Benachrichtigungs-Entitäten, die Nachrichten erhalten, z. B. eure Handys.",
           "quiet_start": "Ab dieser Uhrzeit werden keine Nachrichten gesendet.",
           "quiet_end": "Zu dieser Uhrzeit werden zurückgehaltene Nachrichten gesendet, die noch zutreffen.",

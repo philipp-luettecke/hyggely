@@ -9,7 +9,7 @@ DOMAIN = "climate_control"
 
 SETTINGS = [
     "persons",
-    "away_delay",
+    "presence_delay",
     "notify_targets",
     "quiet_start",
     "quiet_end",

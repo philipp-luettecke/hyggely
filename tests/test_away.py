@@ -1,4 +1,4 @@
-"""Away: once all persons are not home for the away delay, rooms in auto lower."""
+"""Away: once all persons are not home for the presence delay, rooms in auto lower."""
 
 from homeassistant.core import HomeAssistant
 import pytest
@@ -37,7 +37,7 @@ async def _living_room_with_persons(
     return room
 
 
-async def test_house_is_away_once_all_persons_are_gone_for_the_away_delay(
+async def test_house_is_away_once_all_persons_are_gone_for_the_presence_delay(
     hass: HomeAssistant,
     clock: Clock,
     schedules: Schedules,
@@ -143,7 +143,7 @@ async def test_person_with_unknown_presence_counts_as_home(
     assert room.state(hass).attributes["temperature"] == 16.0
 
 
-async def test_brief_return_restarts_the_away_delay(
+async def test_brief_return_restarts_the_presence_delay(
     hass: HomeAssistant,
     clock: Clock,
     schedules: Schedules,
@@ -201,7 +201,7 @@ async def test_override_holds_while_the_house_is_away(
     assert commands(room.trv) == [HEAT_21, HEAT_23, HEAT_16]
 
 
-async def test_house_empty_for_longer_than_the_away_delay_is_away_at_once(
+async def test_house_empty_for_longer_than_the_presence_delay_is_away_at_once(
     hass: HomeAssistant,
     clock: Clock,
     schedules: Schedules,

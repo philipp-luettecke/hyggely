@@ -1,4 +1,4 @@
-"""Presence input: derives away from the configured persons and the away delay."""
+"""Presence input: derives away from the configured persons and the presence delay."""
 
 from __future__ import annotations
 
@@ -23,19 +23,19 @@ _COUNTS_AS_HOME = (STATE_HOME, STATE_UNKNOWN, STATE_UNAVAILABLE)
 
 
 class Presence:
-    """Tells whether the house is away: all persons not home for the away delay.
+    """Tells whether the house is away: all persons not home for the presence delay.
 
     A person whose presence is missing, unknown or unavailable counts as home,
     so a lost phone never lowers the house. Without persons it is never away.
     """
 
     def __init__(
-        self, hass: HomeAssistant, persons: Sequence[str], away_delay: timedelta
+        self, hass: HomeAssistant, persons: Sequence[str], presence_delay: timedelta
     ) -> None:
         """Follow `persons` (person entity ids)."""
         self._hass = hass
         self._persons = list(persons)
-        self._away_delay = away_delay
+        self._presence_delay = presence_delay
         self._all_gone_since: datetime | None = None
         self._away = False
         self._listeners: list[Callable[[], None]] = []
@@ -89,7 +89,7 @@ class Presence:
         self._update()
 
     @callback
-    def _away_delay_passed(self, _now: datetime) -> None:
+    def _presence_delay_passed(self, _now: datetime) -> None:
         self._cancel_timer = None
         self._update()
 
@@ -98,11 +98,11 @@ class Presence:
         self._cancel_pending_timer()
         away = False
         if self._all_gone_since is not None:
-            away_from = self._all_gone_since + self._away_delay
+            away_from = self._all_gone_since + self._presence_delay
             away = dt_util.utcnow() >= away_from
             if not away:
                 self._cancel_timer = async_track_point_in_utc_time(
-                    self._hass, self._away_delay_passed, away_from
+                    self._hass, self._presence_delay_passed, away_from
                 )
         if away != self._away:
             self._away = away

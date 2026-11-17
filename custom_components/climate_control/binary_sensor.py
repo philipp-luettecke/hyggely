@@ -21,7 +21,7 @@ async def async_setup_entry(
 
 
 class AwayBinarySensor(BinarySensorEntity):
-    """On while all persons are not home for the away delay."""
+    """On while all persons are not home for the presence delay."""
 
     _attr_has_entity_name = True
     _attr_should_poll = False

@@ -427,7 +427,7 @@ async def test_changing_the_global_settings_does_not_repeat_a_sent_message(
     for moment in ("12:01", "12:20", "12:21"):
         await clock.advance_to(f"2026-11-16 {moment}:00")
 
-    await change_global_settings(hass, house.entry, away_delay=duration(45))
+    await change_global_settings(hass, house.entry, presence_delay=duration(45))
     for moment in ("12:30", "12:31", "13:00"):
         await clock.advance_to(f"2026-11-16 {moment}:00")
 
