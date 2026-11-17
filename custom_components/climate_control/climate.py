@@ -19,6 +19,7 @@ from .const import DOMAIN, TEMPERATURE_STEP, TRV_MAX_TEMPERATURE, TRV_MIN_TEMPER
 from .room_controller import RoomController
 from .target_resolver import RoomMode
 
+ATTR_REASON = "reason"
 ATTR_OVERRIDE_EXPIRY = "override_expiry"
 
 
@@ -74,8 +75,12 @@ class RoomClimate(ClimateEntity):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Return when the room returns to auto."""
-        return {ATTR_OVERRIDE_EXPIRY: self._controller.mode_expires_at}
+        """Return the reason code and when the room returns to auto."""
+        reason = self._controller.reason
+        return {
+            ATTR_REASON: reason.code if reason else None,
+            ATTR_OVERRIDE_EXPIRY: self._controller.mode_expires_at,
+        }
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
         """Override the room with the new temperature."""

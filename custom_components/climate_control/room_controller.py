@@ -52,6 +52,7 @@ from .target_resolver import (
     Level,
     OverrideExpiry,
     OverrideExpiryPolicy,
+    Reason,
     RoomMode,
     RoomSnapshot,
     TrvMode,
@@ -129,6 +130,11 @@ class RoomController:
     def mode_expires_at(self) -> datetime | None:
         """Return when the room returns to auto (override expiry)."""
         return self._decision.mode_expires_at if self._decision else None
+
+    @property
+    def reason(self) -> Reason | None:
+        """Return why the room has its target temperature."""
+        return self._decision.reason if self._decision else None
 
     @property
     def current_temperature(self) -> float | None:

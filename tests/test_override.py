@@ -67,6 +67,23 @@ async def test_override_falls_back_after_the_duration_when_that_comes_first(
     assert commands(room.trv) == [HEAT_17, HEAT_23, HEAT_17]
 
 
+async def test_override_is_given_as_reason_until_auto(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+) -> None:
+    """The room entity names the manual override as reason, then the schedule."""
+    clock.set("2026-11-16 12:00")
+    room = await living_room(hass, schedules, simulated_trvs)
+
+    await room.call(hass, "set_temperature", temperature=23)
+    assert room.state(hass).attributes["reason"] == "override"
+
+    await room.call(hass, "set_hvac_mode", hvac_mode="auto")
+    assert room.state(hass).attributes["reason"] == "schedule"
+
+
 async def test_next_block_holds_the_override_until_the_next_block_boundary(
     hass: HomeAssistant,
     clock: Clock,
