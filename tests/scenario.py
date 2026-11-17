@@ -17,6 +17,7 @@ from homeassistant.config_entries import (
 from homeassistant.core import HomeAssistant, State
 from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.helpers import area_registry as ar, entity_registry as er
+from homeassistant.setup import async_setup_component
 from pytest_homeassistant.common import async_fire_time_changed
 from pytest_homeassistant.typing import MockHAClientWebSocket
 
@@ -105,18 +106,6 @@ async def add_main_entry(hass: HomeAssistant, **settings: Any) -> ConfigEntry:
     await hass.async_block_till_done()
     entry: ConfigEntry = result["result"]
     return entry
-
-
-async def change_global_settings(
-    hass: HomeAssistant, entry: ConfigEntry, **changes: Any
-) -> None:
-    """Change global settings in the options dialog of the main entry."""
-    result = await hass.config_entries.options.async_init(entry.entry_id)
-    result = await hass.config_entries.options.async_configure(
-        result["flow_id"], {**entry.options, **changes}
-    )
-    await hass.async_block_till_done()
-    assert result["type"] is FlowResultType.CREATE_ENTRY
 
 
 async def shut_down(hass: HomeAssistant, entry: ConfigEntry) -> None:
@@ -279,3 +268,66 @@ async def change_room(
     await hass.async_block_till_done()
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "reconfigure_successful"
+
+
+async def change_global_settings(
+    hass: HomeAssistant, entry: ConfigEntry, **changes: Any
+) -> None:
+    """Change global settings in the options dialog of the main entry."""
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    assert result["type"] is FlowResultType.FORM
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {**entry.options, **changes}
+    )
+    await hass.async_block_till_done()
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+
+
+class Persons:
+    """Native person entities, each following the device tracker of a phone."""
+
+    def __init__(self, hass: HomeAssistant) -> None:
+        """Use the test Home Assistant."""
+        self._hass = hass
+
+    async def add(self, **presences: str) -> list[str]:
+        """Add persons with their presence, e.g. `anna="home"`; return entity ids."""
+        for name, presence in presences.items():
+            self._report(name, presence)
+        assert await async_setup_component(
+            self._hass,
+            "person",
+            {
+                "person": [
+                    {
+                        "id": name,
+                        "name": name.title(),
+                        "device_trackers": [f"device_tracker.{name}_phone"],
+                    }
+                    for name in presences
+                ]
+            },
+        )
+        await self._hass.async_block_till_done()
+        return [f"person.{name}" for name in presences]
+
+    async def move(self, name: str, presence: str) -> None:
+        """Let the phone of a person report a presence, e.g. `not_home`."""
+        self._report(name, presence)
+        await self._hass.async_block_till_done()
+
+    def _report(self, name: str, presence: str) -> None:
+        self._hass.states.async_set(
+            f"device_tracker.{name}_phone", presence, {"source_type": "router"}
+        )
+
+
+def away_state(hass: HomeAssistant, entry: ConfigEntry) -> State:
+    """Return the state of the global away entity."""
+    entity_id = er.async_get(hass).async_get_entity_id(
+        "binary_sensor", DOMAIN, f"{entry.entry_id}_away"
+    )
+    assert entity_id is not None
+    state = hass.states.get(entity_id)
+    assert state is not None
+    return state

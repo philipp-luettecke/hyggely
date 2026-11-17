@@ -34,6 +34,7 @@ from homeassistant.helpers.event import (
 from homeassistant.util import dt as dt_util
 
 from .const import (
+    CONF_AWAY_TEMPERATURE,
     CONF_COMFORT_TEMPERATURE,
     CONF_ECO_TEMPERATURE,
     CONF_FROST_TEMPERATURE,
@@ -43,6 +44,7 @@ from .const import (
     CONF_TRVS,
     OVERRIDE_EXPIRY_GLOBAL,
 )
+from .presence import Presence
 from .room_mode_store import RoomModeChoice, RoomModeStore
 from .schedule_reader import ScheduleReader
 from .target_resolver import (
@@ -84,6 +86,7 @@ class RoomController:
         hass: HomeAssistant,
         entry: ConfigEntry,
         subentry: ConfigSubentry,
+        presence: Presence,
         room_modes: RoomModeStore,
     ) -> None:
         """Create the controller for the room `subentry` of the main entry.
@@ -92,6 +95,7 @@ class RoomController:
         """
         self._hass = hass
         self._entry = entry
+        self._presence = presence
         self._room_modes = room_modes
         self.room_id = subentry.subentry_id
         self.name = subentry.title
@@ -102,6 +106,7 @@ class RoomController:
             Level.ECO: float(subentry.data[CONF_ECO_TEMPERATURE]),
         }
         self._frost_temperature = float(entry.options[CONF_FROST_TEMPERATURE])
+        self._away_temperature = float(entry.options[CONF_AWAY_TEMPERATURE])
         self._override_expiry = _override_expiry(entry, subentry)
         self._choice = room_modes.get(self.room_id)
         self._decision: Decision | None = None
@@ -150,6 +155,9 @@ class RoomController:
         )
         self._unsubscribers.append(
             async_track_state_change_event(self._hass, self._trvs, self._trv_changed)
+        )
+        self._unsubscribers.append(
+            self._presence.async_add_listener(self._async_request_evaluation)
         )
         await self._async_evaluate()
 
@@ -230,9 +238,11 @@ class RoomController:
                     schedule=schedule,
                     level_temperatures=self._level_temperatures,
                     frost_temperature=self._frost_temperature,
+                    away_temperature=self._away_temperature,
                     room_mode=self._choice.room_mode,
                     override_temperature=self._choice.override_temperature,
                     mode_expires_at=self._choice.expires_at,
+                    away=self._presence.away,
                 )
             )
             if (

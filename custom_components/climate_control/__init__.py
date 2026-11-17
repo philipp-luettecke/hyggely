@@ -3,23 +3,26 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import timedelta
 
 from homeassistant.config_entries import ConfigEntry, ConfigSubentry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 
-from .const import CONF_AREA, DOMAIN, SUBENTRY_TYPE_ROOM
+from .const import CONF_AREA, CONF_AWAY_DELAY, CONF_PERSONS, DOMAIN, SUBENTRY_TYPE_ROOM
+from .presence import Presence
 from .room_controller import RoomController
 from .room_mode_store import RoomModeStore, async_remove_room_modes
 
-PLATFORMS = [Platform.CLIMATE]
+PLATFORMS = [Platform.BINARY_SENSOR, Platform.CLIMATE]
 
 
 @dataclass
 class RuntimeData:
     """Live objects of the main entry."""
 
+    presence: Presence
     rooms: dict[str, RoomController] = field(default_factory=dict)
 
 
@@ -30,15 +33,23 @@ async def async_setup_entry(
     hass: HomeAssistant, entry: ClimateControlConfigEntry
 ) -> None:
     """Set up the main entry with one room controller per room."""
-    entry.runtime_data = RuntimeData()
+    presence = Presence(
+        hass,
+        entry.options[CONF_PERSONS],
+        timedelta(**entry.options[CONF_AWAY_DELAY]),
+    )
+    entry.runtime_data = RuntimeData(presence=presence)
     rooms = entry.get_subentries_of_type(SUBENTRY_TYPE_ROOM)
     room_modes = RoomModeStore(hass, entry.entry_id)
     await room_modes.async_load([subentry.subentry_id for subentry in rooms])
     for subentry in rooms:
         _async_register_room_device(hass, entry, subentry)
         entry.runtime_data.rooms[subentry.subentry_id] = RoomController(
-            hass, entry, subentry, room_modes
+            hass, entry, subentry, presence, room_modes
         )
+
+    entry.async_on_unload(presence.async_stop)
+    presence.async_start()
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 

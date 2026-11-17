@@ -110,3 +110,21 @@ async def test_override_expiry_policies_are_labelled_in_the_language(
     assert texts[f"{prefix}.next_block"]
     assert texts[f"{prefix}.duration"]
     assert texts[f"{prefix}.global"]
+
+
+@pytest.mark.parametrize(
+    ("language", "house", "away", "on", "off"),
+    [("en", "House", "Away", "Yes", "No"), ("de", "Haus", "Abwesend", "Ja", "Nein")],
+)
+async def test_away_entity_of_the_house_is_labelled_in_the_language(
+    hass: HomeAssistant, language: str, house: str, away: str, on: str, off: str
+) -> None:
+    """The house device and its away entity have a name and readable states."""
+    devices = await async_get_translations(hass, language, "device", [DOMAIN])
+    entities = await async_get_translations(hass, language, "entity", [DOMAIN])
+    prefix = f"component.{DOMAIN}.entity.binary_sensor.away"
+
+    assert devices[f"component.{DOMAIN}.device.house.name"] == house
+    assert entities[f"{prefix}.name"] == away
+    assert entities[f"{prefix}.state.on"] == on
+    assert entities[f"{prefix}.state.off"] == off
