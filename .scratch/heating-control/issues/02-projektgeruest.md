@@ -6,7 +6,7 @@ Spec: `.scratch/heating-control/spec.md`
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Die Integration erscheint unter „Integration hinzufügen“ und lässt sich ohne YAML einrichten
 - [ ] Der Haupteintrag kann nur einmal angelegt werden, und alle globalen Einstellungen sind im Optionsdialog änderbar
@@ -29,3 +29,5 @@ Spec: `.scratch/heating-control/spec.md`
 **Simulierte TRVs:** `tests/simulated_trv.py`, Fixture `simulated_trvs`. Jedes TRV ist eine echte `climate`-Entität auf eigenem Gerät, gesteuert über die normalen `climate.*`-Aktionen. Aufrufe werden mitgeschrieben (`trv.calls`) und sofort übernommen (abschaltbar mit `trv.apply_commands = False`). `trv.report(...)` simuliert vom TRV gemeldete Werte mit neuem Context. Für Ticket 08/13 zu ergänzen: Minutentakt der Abfrage, Ignorieren einer Temperatur ohne Modus im Zustand `off`, Einfrieren bei Bridge-Ausfall samt Temperatursensor am selben Gerät.
 
 **WSL-Umgebung:** In `RSLinux-24.04` ist die DNS-Auflösung kaputt (WSL-Resolver `10.255.255.254` verweigert Verbindungen). TLS ist in Ordnung. Details und Umgehung ohne Abschalten der TLS-Prüfung stehen in `AGENTS.md`. Dauerhafte Lösung braucht sudo (siehe dort).
+
+**Abgeschlossen:** Merge-Commit `9f71501` auf `feat/heating-control`. Ergebnis: Integration `climate_control` mit Haupteintrag, Optionsdialog, DE/EN-Texten, Test-Hilfe für simulierte TRVs und `wsl -d RSLinux-24.04 -- ./scripts/check` (Lint, mypy, 14 Tests grün).
