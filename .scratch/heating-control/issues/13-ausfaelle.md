@@ -15,7 +15,7 @@ Verhalten:
 
 **Blocked by:** 01, 03
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Ein TRV gilt als nicht erreichbar, wenn die `climate`-Entität oder der Temperatursensor des Geräts `unavailable` ist
 - [ ] Der Temperatursensor wird ohne Zutun des Admins über das Gerät des TRV gefunden. Fehlt er, zählt nur die `climate`-Entität
@@ -42,3 +42,5 @@ Verhalten:
 **Simulierte TRVs:** Jedes TRV hat jetzt `sensor.<id>_current_temperature` am selben Gerät (abschaltbar mit `temperature_sensor=False`). Home Assistant fragt jede volle Minute ab (`SimulatedTrv._poll`). Ticket 08 kann dort die Drehungen am Knopf zustellen. `unplug_bridge()` friert ein, Befehle gehen verloren, und der Sensor ist ab der zweiten Abfrage `unavailable`. `plug_in_bridge()` bringt den Sensor zur zweiten Abfrage zurück, zusammen mit dem Modus `None` (Zustand `unknown`). Frische Werte kommen zur vierten Abfrage, wie in Ticket 01 gemessen. Außerdem gibt es `report_invalid_mode()` und `set_available()`.
 
 **Annahme:** Ein ungültiger Modus ohne Ausfall wird genauso behandelt wie eine Rückkehr: keine Befehle während `unknown`, danach einmal der aktuelle Sollzustand.
+
+**Abgeschlossen:** Merge-Commit `9805f63` auf `feat/heating-control`. Ergebnis: Nichterreichbarkeit über `climate`-Entität oder Temperatursensor, Nachsenden bei Rückkehr, gestaffelte Befehle (2 s) nach Neustart, Reparaturhinweis nach 30 min; 71 Tests grün.
