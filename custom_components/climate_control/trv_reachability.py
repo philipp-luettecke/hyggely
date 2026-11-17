@@ -12,6 +12,7 @@ from homeassistant.core import (
     Event,
     EventStateChangedData,
     HomeAssistant,
+    State,
     callback,
 )
 from homeassistant.helpers import entity_registry as er
@@ -34,8 +35,8 @@ class TrvReachability:
     only freezes with its old values (ticket 01). A TRV takes commands while it is
     reachable and reports a valid mode. A TRV that could not take commands is
     handed to `on_back` as soon as it can again. A new state of a TRV that took
-    commands before and still does goes to `on_report`; frozen values and the
-    return from an outage never do. A TRV unreachable for longer than
+    commands before and still does goes to `on_report`, with the state before;
+    frozen values and the return from an outage never do. A TRV unreachable for longer than
     `OFFLINE_AFTER` is offline; `on_offline_changed` reports changes.
     """
 
@@ -45,7 +46,7 @@ class TrvReachability:
         trvs: list[str],
         *,
         on_back: Callable[[str], None],
-        on_report: Callable[[str], None],
+        on_report: Callable[[str, State | None], None],
         on_offline_changed: Callable[[], None],
     ) -> None:
         """Find the temperature sensor on the device of each TRV."""
@@ -107,7 +108,7 @@ class TrvReachability:
             self._missed.discard(trv)
             self._on_back(trv)
         elif entity_id == trv:
-            self._on_report(trv)
+            self._on_report(trv, event.data["old_state"])
         self._update_offline()
 
     @callback

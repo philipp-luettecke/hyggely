@@ -383,14 +383,18 @@ class RoomController:
         self._notify_listeners()
 
     @callback
-    def _trv_reported(self, trv: str) -> None:
+    def _trv_reported(self, trv: str, previous: State | None) -> None:
         """Turn an external change at `trv`, e.g. a knob turn, into a room mode."""
         decision = self._decision
         reported = _reported_setting(self._hass.states.get(trv))
         if decision is None or reported is None:
             return
         classification = self._detector.classify(
-            trv, reported, target=_target_setting(decision), now=dt_util.utcnow()
+            trv,
+            reported,
+            previous=_reported_setting(previous),
+            target=_target_setting(decision),
+            now=dt_util.utcnow(),
         )
         # Not eager: a command sent while the report is still being written would
         # be overwritten by the reported state.

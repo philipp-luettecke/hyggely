@@ -141,6 +141,57 @@ async def test_command_not_taken_twice_is_not_sent_a_third_time(
     assert commands(room.trv) == [HEAT_17, HEAT_23, HEAT_23]
 
 
+async def test_new_room_temperature_after_a_command_not_taken_twice_is_no_override(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+) -> None:
+    """The TRV still at 17 °C reports 19 °C in the room: the room keeps 23 °C."""
+    clock.set("2026-11-16 12:00")
+    room = await living_room(hass, schedules, simulated_trvs)
+    await clock.advance_to("2026-11-16 12:00:30")
+    room.trv.commands_to_lose = 2
+    await room.call(hass, "set_temperature", temperature=23)
+    await clock.advance_to("2026-11-16 12:01:00")
+    await clock.advance_to("2026-11-16 12:02:00")
+
+    await clock.advance_to("2026-11-16 12:02:30")
+    room.trv.report(current_temperature=19.0)
+    await clock.advance_to("2026-11-16 12:03:00")
+
+    assert room.state(hass).state == "heat"
+    assert room.state(hass).attributes["temperature"] == 23.0
+    expiry = local("2026-11-16 15:00:30")
+    assert room.state(hass).attributes["override_expiry"] == expiry
+    assert commands(room.trv) == [HEAT_17, HEAT_23, HEAT_23]
+
+
+async def test_knob_turn_after_a_command_not_taken_twice_overrides(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+) -> None:
+    """The TRV kept 17 °C instead of 23 °C; turning it to 20 °C later is a wish."""
+    clock.set("2026-11-16 12:00")
+    room = await living_room(hass, schedules, simulated_trvs)
+    await clock.advance_to("2026-11-16 12:00:30")
+    room.trv.commands_to_lose = 2
+    await room.call(hass, "set_temperature", temperature=23)
+    await clock.advance_to("2026-11-16 12:01:00")
+    await clock.advance_to("2026-11-16 12:02:00")
+
+    await clock.advance_to("2026-11-16 12:10:20")
+    room.trv.turn_knob(20.0)
+    await clock.advance_to("2026-11-16 12:11:00")
+
+    assert room.state(hass).state == "heat"
+    assert room.state(hass).attributes["temperature"] == 20.0
+    assert room.state(hass).attributes["override_expiry"] == local("2026-11-16 15:11")
+    assert commands(room.trv) == [HEAT_17, HEAT_23, HEAT_23]
+
+
 async def test_switching_off_at_the_trv_means_off_until_the_next_block_boundary(
     hass: HomeAssistant,
     clock: Clock,
