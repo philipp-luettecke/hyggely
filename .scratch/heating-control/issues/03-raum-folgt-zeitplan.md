@@ -6,7 +6,7 @@ Spec: `.scratch/heating-control/spec.md`
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Ein Raum lässt sich als Unterpunkt des Haupteintrags anlegen und im Optionsdialog ändern
 - [ ] Pro Raum gibt es ein Gerät im gewählten Bereich mit einem Raum-Thermostat, das die Modi `auto`, `heat` und `off` anbietet
@@ -41,3 +41,5 @@ Spec: `.scratch/heating-control/spec.md`
 **Bewusst offen (spätere Tickets):** Ein fehlendes oder nicht erreichbares TRV bekommt keinen Befehl. Es wird auch nicht nachgesendet, wenn es zurückkommt (13). Ohne Zustand des Zeitplan-Helfers fällt keine Entscheidung. Das Manifest hat `after_dependencies: ["schedule"]`, damit die Helfer beim Start vor den Räumen da sind.
 
 **Tests:** `tests/scenario.py` enthält Uhr (Europe/Berlin), Zeitplan-Helfer über die nativen Websocket-Befehle (`schedule/create`/`update`), Haupteintrag, Raum-Dialog und das Beispiel-Wohnzimmer. `expected_lingering_timers` ist global erlaubt, weil Zeitplan-Helfer und Räume einen Timer bis zum nächsten Schaltpunkt halten.
+
+**Abgeschlossen:** Merge-Commit `86cab50` auf `feat/heating-control`. Ergebnis: Raum als Subentry mit Gerät und Raum-Thermostat, folgt Komfort/Eco aus dem Zeitplan-Helfer und sendet nur bei Abweichung; 30 Tests grün.
