@@ -5,11 +5,20 @@ it through the normal `climate.*` actions. The behaviour follows the measurement
 in ticket 01: commands show up in the state at once, an off TRV reports no target
 temperature and a 7-35 range, values reported by the TRV itself carry a fresh
 context without user or parent.
+
+Like HomeKit Device, the device also carries a temperature sensor, and Home
+Assistant polls the TRV once a minute at the full minute (no push). On a bridge
+outage the climate entity freezes with its old values and ignores commands; only
+the temperature sensor becomes unavailable, at the second poll after unplugging.
+After plugging the bridge in again, the sensor returns at the second poll
+together with an invalid mode (state `unknown`), and fresh climate values arrive
+at the fourth poll.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from typing import Any
 
 from homeassistant.components.climate import (
@@ -17,6 +26,7 @@ from homeassistant.components.climate import (
     ClimateEntityFeature,
     HVACMode,
 )
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.config_entries import ConfigEntry, ConfigFlow
 from homeassistant.const import (
     ATTR_DOMAIN,
@@ -30,6 +40,8 @@ from homeassistant.const import (
 from homeassistant.core import Context, Event, HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+from homeassistant.helpers.event import async_track_utc_time_change
+from homeassistant.util import dt as dt_util
 from pytest_homeassistant.common import (
     MockConfigEntry,
     MockModule,
@@ -59,6 +71,48 @@ class TrvCall:
     context: Context
 
 
+def _poll_after(moment: datetime, count: int) -> datetime:
+    """Return the `count`-th full minute after `moment`."""
+    return moment.replace(second=0, microsecond=0) + timedelta(minutes=count)
+
+
+@dataclass
+class _BridgeOutage:
+    """When the polls after unplugging and plugging in the bridge take effect."""
+
+    sensor_lost_at: datetime
+    sensor_back_at: datetime | None = None
+    fresh_at: datetime | None = None
+
+
+class SimulatedTemperatureSensor(SensorEntity):
+    """The current temperature sensor on the device of a TRV."""
+
+    _attr_device_class = SensorDeviceClass.TEMPERATURE
+    _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+    _attr_should_poll = False
+
+    def __init__(self, trv: SimulatedTrv, object_id: str) -> None:
+        """Create the sensor on the device of `trv`."""
+        self._trv = trv
+        self.entity_id = f"sensor.{object_id}_current_temperature"
+        self._attr_unique_id = f"{object_id}_current_temperature"
+        self._attr_name = f"{object_id} current temperature"
+        self._attr_device_info = DeviceInfo(identifiers={(TRV_DOMAIN, object_id)})
+
+    @property
+    def native_value(self) -> float | None:
+        """Return the current temperature the TRV measures."""
+        return self._trv.native_current_temperature
+
+    @callback
+    def set_available(self, available: bool) -> None:
+        """Become available or unavailable."""
+        if self._attr_available != available:
+            self._attr_available = available
+            self.async_write_ha_state()
+
+
 class SimulatedTrv(ClimateEntity):
     """A tado radiator thermostat as seen through HomeKit Device."""
 
@@ -78,6 +132,7 @@ class SimulatedTrv(ClimateEntity):
         hvac_mode: HVACMode,
         target_temperature: float,
         current_temperature: float,
+        temperature_sensor: bool,
     ) -> None:
         """Create a TRV; `target_temperature` is kept while it is off."""
         self.entity_id = f"climate.{object_id}"
@@ -92,9 +147,25 @@ class SimulatedTrv(ClimateEntity):
         self._attr_hvac_mode = hvac_mode
         self._setpoint = target_temperature
         self._attr_native_current_temperature = current_temperature
+        self._invalid_mode = False
+        self._outage: _BridgeOutage | None = None
+        self.temperature_sensor = (
+            SimulatedTemperatureSensor(self, object_id) if temperature_sensor else None
+        )
         self.calls: list[TrvCall] = []
         self.apply_commands = True
         """When False, commands are recorded but do not change the state."""
+
+    @property
+    def temperature_sensor_id(self) -> str:
+        """Return the entity id of the temperature sensor on the device."""
+        assert self.temperature_sensor is not None
+        return self.temperature_sensor.entity_id
+
+    @property
+    def hvac_mode(self) -> HVACMode | None:
+        """Return the mode; None while the bridge reports an invalid one."""
+        return None if self._invalid_mode else self._attr_hvac_mode
 
     @property
     def native_target_temperature(self) -> float | None:
@@ -113,6 +184,12 @@ class SimulatedTrv(ClimateEntity):
         """Return the upper bound; tado reports 35 while off."""
         return _OFF_RANGE[1] if self.hvac_mode == HVACMode.OFF else _HEAT_RANGE[1]
 
+    async def async_added_to_hass(self) -> None:
+        """Start the minute poll of Home Assistant."""
+        self.async_on_remove(
+            async_track_utc_time_change(self.hass, self._poll, second=0)
+        )
+
     def report(
         self,
         *,
@@ -127,12 +204,62 @@ class SimulatedTrv(ClimateEntity):
             self._setpoint = target_temperature
         if current_temperature is not None:
             self._attr_native_current_temperature = current_temperature
+        self._invalid_mode = False
+        self.async_set_context(Context())
+        self.async_write_ha_state()
+        if current_temperature is not None and self.temperature_sensor is not None:
+            self.temperature_sensor.async_write_ha_state()
+
+    def report_invalid_mode(self) -> None:
+        """Make the bridge report the mode None, shown as state `unknown`."""
+        self._invalid_mode = True
         self.async_set_context(Context())
         self.async_write_ha_state()
 
+    def set_available(self, available: bool) -> None:
+        """Make the climate entity itself unavailable or available again."""
+        self._attr_available = available
+        self.async_write_ha_state()
+
+    def unplug_bridge(self) -> None:
+        """Cut the bridge: values freeze, commands get lost, the sensor follows."""
+        self._outage = _BridgeOutage(sensor_lost_at=_poll_after(dt_util.utcnow(), 2))
+
+    def plug_in_bridge(self) -> None:
+        """Reconnect the bridge; values return over the next polls."""
+        assert self._outage is not None
+        now = dt_util.utcnow()
+        self._outage.sensor_back_at = _poll_after(now, 2)
+        self._outage.fresh_at = _poll_after(now, 4)
+
+    @callback
+    def _poll(self, _now: datetime) -> None:
+        """Run the minute poll; only a bridge outage changes anything yet."""
+        outage = self._outage
+        if outage is None:
+            return
+        now = dt_util.utcnow()
+        if outage.fresh_at is not None and now >= outage.fresh_at:
+            self._outage = None
+            self.report()
+            self._set_sensor_available(True)
+        elif outage.sensor_back_at is not None and now >= outage.sensor_back_at:
+            if not self._invalid_mode:
+                self.report_invalid_mode()
+            self._set_sensor_available(True)
+        elif now >= outage.sensor_lost_at:
+            self._set_sensor_available(False)
+
+    def _set_sensor_available(self, available: bool) -> None:
+        if self.temperature_sensor is not None:
+            self.temperature_sensor.set_available(available)
+
+    def _takes_commands(self) -> bool:
+        return self.apply_commands and self._outage is None
+
     async def async_set_temperature(self, **kwargs: Any) -> None:
         """Apply mode and temperature at once."""
-        if not self.apply_commands:
+        if not self._takes_commands():
             return
         if (hvac_mode := kwargs.get("hvac_mode")) is not None:
             self._attr_hvac_mode = HVACMode(hvac_mode)
@@ -142,7 +269,7 @@ class SimulatedTrv(ClimateEntity):
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Apply the mode at once."""
-        if not self.apply_commands:
+        if not self._takes_commands():
             return
         self._attr_hvac_mode = hvac_mode
         self.async_write_ha_state()
@@ -170,7 +297,7 @@ class SimulatedTrvs:
 
         async def setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
             await hass.config_entries.async_forward_entry_setups(
-                entry, [Platform.CLIMATE]
+                entry, [Platform.CLIMATE, Platform.SENSOR]
             )
 
         async def setup_climate(
@@ -180,12 +307,26 @@ class SimulatedTrvs:
         ) -> None:
             async_add_entities([self._trvs_by_entry[entry.entry_id]])
 
+        async def setup_sensor(
+            hass: HomeAssistant,
+            entry: ConfigEntry,
+            async_add_entities: AddConfigEntryEntitiesCallback,
+        ) -> None:
+            sensor = self._trvs_by_entry[entry.entry_id].temperature_sensor
+            if sensor is not None:
+                async_add_entities([sensor])
+
         mock_integration(hass, MockModule(TRV_DOMAIN, async_setup_entry=setup_entry))
         mock_platform(hass, f"{TRV_DOMAIN}.config_flow")
         mock_platform(
             hass,
             f"{TRV_DOMAIN}.{Platform.CLIMATE}",
             MockPlatform(async_setup_entry=setup_climate),
+        )
+        mock_platform(
+            hass,
+            f"{TRV_DOMAIN}.{Platform.SENSOR}",
+            MockPlatform(async_setup_entry=setup_sensor),
         )
 
     async def add(
@@ -195,13 +336,19 @@ class SimulatedTrvs:
         hvac_mode: str = HVACMode.HEAT,
         target_temperature: float = 20.0,
         current_temperature: float = 20.0,
+        temperature_sensor: bool = True,
     ) -> SimulatedTrv:
-        """Add a TRV as `climate.<object_id>` on its own device."""
+        """Add a TRV as `climate.<object_id>` on its own device.
+
+        With `temperature_sensor` the device also carries
+        `sensor.<object_id>_current_temperature`.
+        """
         trv = SimulatedTrv(
             object_id,
             hvac_mode=HVACMode(hvac_mode),
             target_temperature=target_temperature,
             current_temperature=current_temperature,
+            temperature_sensor=temperature_sensor,
         )
         entry = MockConfigEntry(domain=TRV_DOMAIN, title=object_id)
         entry.add_to_hass(self._hass)
