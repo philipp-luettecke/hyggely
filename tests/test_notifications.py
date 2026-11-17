@@ -62,7 +62,7 @@ async def _house(
             hass,
             entry,
             name=name,
-            trv=trvs[name].entity_id,
+            trvs=[trvs[name].entity_id],
             schedule=schedule,
             area=ar.async_get(hass).async_create(name).id,
             window_contacts=[windows[name].entity_id],
