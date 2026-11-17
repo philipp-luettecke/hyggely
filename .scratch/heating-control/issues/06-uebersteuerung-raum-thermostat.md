@@ -19,3 +19,17 @@ Spec: `.scratch/heating-control/spec.md`
 - [ ] Ist der Rückfallzeitpunkt während des Neustarts verstrichen, steht der Raum nach dem Start sofort auf Auto
 - [ ] Der Grund-Sensor zeigt Übersteuerung und Ende
 - [ ] Szenario-Tests decken alle drei Rückfallregeln, den Neustart und das Beenden per Auto ab
+
+## Comments
+
+**Rückfallzeitpunkt:** Er wird beim Start der Übersteuerung einmal festgelegt (`target_resolver.mode_expires_at`, rein, ohne HA) und danach nicht mehr verschoben, auch wenn sich der Zeitplan ändert. Eine neue Temperatur oder erneut `heat` startet die Übersteuerung neu, mit neuem Rückfallzeitpunkt. `next_block` nutzt den nächsten Schaltpunkt aus dem Schedule Reader, seit Ticket 04 also mit Vorlaufzeit. Gibt es keinen nächsten Schaltpunkt (leerer Zeitplan), endet `next_block` nie und `earliest` nach der Dauer. Aus endet unabhängig von der Rückfallregel immer am nächsten Schaltpunkt.
+
+**Rückfallregel pro Raum:** Im Raum-Dialog gibt es „Rückfall“ mit der zusätzlichen Auswahl „Globale Einstellung“ (Wert `global`, Standard) und eine optionale „Dauer der Übersteuerung“. Die Regel des Raums gilt, wenn sie nicht `global` ist. Die Dauer des Raums gilt, sobald sie gesetzt ist, auch bei globaler Regel (z. B. Bad: global `earliest`, aber nur 1 h). Leere Dauer heißt globale Dauer. Räume ohne diese Felder folgen der globalen Einstellung.
+
+**Attribute des Raum-Thermostats:** `override_expiry` (`datetime`, Rückfallzeitpunkt bei Heizen und Aus, sonst `None`) und `reason` (Grund-Code aus dem Target Resolver, z. B. `override`, `schedule`). Für den Grund-Sensor aus Ticket 05 liefert der Resolver bei Übersteuerung `Reason(code=override, params={"until": <Rückfallzeitpunkt>})`; daraus wird „Heizen bis 14:00 (manuell)“. Der Sensor existierte bei Abschluss noch nicht auf `feat/heating-control`. Deshalb prüfen die Tests den Grund über das Attribut `reason`. Wer 05 merged, sollte einen Szenario-Test für den Klartext der Übersteuerung ergänzen.
+
+**Speicherung über Neustart und Neuladen:** `room_mode_store.py` speichert Raum-Modus, Übersteuerungstemperatur und Rückfallzeitpunkt aller Räume in einem `Store` (`.storage/climate_control.<entry_id>.room_modes`). Jede Änderung wird sofort geschrieben, nicht erst beim Entladen. So hängt nichts davon ab, wie Home Assistant herunterfährt (auch ein Absturz verliert nichts). Beim Start lädt der Controller seinen Stand; ist der Rückfallzeitpunkt verstrichen, entscheidet der Resolver sofort Auto. Gelöschte Räume fallen beim nächsten Laden heraus, beim Entfernen der Integration wird die Datei gelöscht. `RestoreEntity` habe ich bewusst nicht genommen: Der Zustand gehört dem Room Controller, nicht der Entität, und die Entität bleibt dünn.
+
+**Aus (für Ticket 07):** Aus läuft über denselben Mechanismus, wird also schon gespeichert und nach einem Neustart bis zum nächsten Schaltpunkt wiederhergestellt. Tests dafür und den Grund „Aus bis …“ ergänzt Ticket 07. `test_room_modes.py` enthält nur noch den Aus-Test aus 03; die Übersteuerungs-Tests stehen in `tests/test_override.py`.
+
+**Tests:** `scenario.shut_down()`/`start_up()` simulieren den Neustart (Eintrag entladen, Zeit vorspulen, neu einrichten). Dabei bleibt nur der Speicher erhalten. `living_room()` nimmt `global_settings`, `add_main_entry()` beliebige globale Einstellungen, und `LivingRoom.call()` ruft eine `climate`-Aktion am Raum-Thermostat auf.
