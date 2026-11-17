@@ -13,10 +13,14 @@ Es gibt keine Verbindung zu Home Assistant. Wenn es Gestaltungsfragen gibt, z. B
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Eine einzelne HTML-Datei, ohne Build-Schritt auf dem Handy öffnenbar
 - [ ] Alle fünf Inhalte aus der Spec sind mit Beispieldaten bedienbar
 - [ ] Für das Bearbeiten von Blöcken im Wochenraster gibt es mindestens zwei umschaltbare Varianten
 - [ ] Die Texte sind auf Deutsch und verwenden die Begriffe aus dem Glossar
 - [ ] Eine kurze Liste offener Gestaltungsfragen für die Abnahme in Ticket 16 liegt bei
+
+## Comments
+
+- Kein Merge (Wegwerf-Prototyp, wird nicht in die Integration übernommen): liegt auf Branch `prototype/15-panel`, Commit `636ce5c`. Datei `prototypes/heating-panel/heating-panel-prototype.html`, offene Fragen für Ticket 16 in `prototypes/heating-panel/OPEN-QUESTIONS.md` (12 Fragen, u. a. Wahl der Variante A/B/C fürs Wochenraster). Ergebnis: Eine Offline-HTML-Datei mit allen fünf Panel-Inhalten, drei Varianten über `?variant=`, Selbsttest über `?selftest=1` ohne JS-Fehler.
