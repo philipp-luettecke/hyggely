@@ -16,5 +16,6 @@ Spec: `.scratch/heating-control/spec.md`
 - [ ] `set_hvac_mode(heat)` ohne Temperatur übersteuert mit dem aktuellen Sollwert
 - [ ] Eine erneute Temperaturänderung während einer Übersteuerung aktualisiert Temperatur und Rückfallzeitpunkt
 - [ ] Nach einem Neustart von Home Assistant sind Übersteuerung und Rückfallzeitpunkt unverändert
+- [ ] Ist der Rückfallzeitpunkt während des Neustarts verstrichen, steht der Raum nach dem Start sofort auf Auto
 - [ ] Der Grund-Sensor zeigt Übersteuerung und Ende
 - [ ] Szenario-Tests decken alle drei Rückfallregeln, den Neustart und das Beenden per Auto ab

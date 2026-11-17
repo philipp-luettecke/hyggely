@@ -13,5 +13,6 @@ Spec: `.scratch/heating-control/spec.md`
 - [ ] Der Klartext nennt, wo sinnvoll, den nächsten Schaltpunkt (z. B. „Eco bis 06:30“)
 - [ ] Jede Änderung des Sollwerts erzeugt genau einen Logbuch-Eintrag mit Grund
 - [ ] Der Diagnose-Export enthält Konfiguration, Schnappschüsse und die letzten Entscheidungen ohne personenbezogene Daten über das Nötige hinaus
-- [ ] Neue Gründe lassen sich in späteren Tickets ergänzen, ohne den Sensor umzubauen
-- [ ] Szenario-Tests prüfen Grund-Code und Klartext für Komfort, Nacht und Eco
+- [ ] Grund-Code und Parameter stammen aus dem Target Resolver. Der Sensor übersetzt sie nur
+- [ ] Die Grund-Codes für spätere Eingaben (Übersteuerung, Aus, Fenster, Abwesend, Urlaub, Haus aus) sind schon definiert und übersetzt, sodass spätere Tickets den Sensor nicht umbauen müssen
+- [ ] Szenario-Tests prüfen Grund-Code und Klartext für Komfort, Nacht und Eco sowie den Logbuch-Eintrag. Der Diagnose-Export hat einen eigenen Test

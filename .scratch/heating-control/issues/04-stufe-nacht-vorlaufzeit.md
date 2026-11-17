@@ -11,7 +11,9 @@ Spec: `.scratch/heating-control/spec.md`
 - [ ] Ein Block mit `level: night` setzt die Nacht-Temperatur, ein Block ohne Angabe die Komfort-Temperatur
 - [ ] Bei aneinandergrenzenden Blöcken mit unterschiedlicher Stufe wechselt die Solltemperatur genau an der Grenze
 - [ ] Mit einer Vorlaufzeit von z. B. 30 min wird die Stufe eines Blocks 30 min vor seinem Beginn angewendet
-- [ ] Der Blockbeginn um Mitternacht und Blöcke, die über den Tageswechsel gehen, verhalten sich korrekt
-- [ ] Der nächste Schaltpunkt ist als Attribut verfügbar und berücksichtigt die Vorlaufzeit
+- [ ] Die Vorlaufzeit wirkt nur auf den Beginn eines Blocks. Beim Blockende wird nicht vorzeitig abgesenkt
+- [ ] Der Blockbeginn um Mitternacht, Blöcke über den Tageswechsel und der Wochenwechsel von Sonntag auf Montag verhalten sich korrekt
+- [ ] Der nächste Schaltpunkt ist als Attribut verfügbar, berücksichtigt die Vorlaufzeit und wird bei einer Änderung am Zeitplan neu berechnet
+- [ ] Das Raum-Thermostat zeigt die aktive Stufe als Attribut
 - [ ] Nacht-Temperatur und Vorlaufzeit sind im Optionsdialog des Raums änderbar
 - [ ] Szenario-Tests decken Stufen, Vorlaufzeit und Grenzfälle am Tageswechsel ab
