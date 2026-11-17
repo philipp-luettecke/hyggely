@@ -36,6 +36,7 @@ from .const import (
     CONF_SCHEDULE,
     CONF_TRVS,
     CONF_VACATION_TEMPERATURE,
+    CONF_WINDOW_CONTACTS,
     CONF_WINDOW_DELAY,
     DEFAULT_AWAY_DELAY,
     DEFAULT_AWAY_TEMPERATURE,
@@ -123,6 +124,11 @@ def _room_schema() -> probatio.Schema:
             probatio.Required(CONF_NAME): selector.TextSelector(),
             probatio.Required(CONF_TRVS): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="climate")
+            ),
+            probatio.Optional(
+                CONF_WINDOW_CONTACTS, default=[]
+            ): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="binary_sensor", multiple=True)
             ),
             probatio.Required(CONF_SCHEDULE): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="schedule")

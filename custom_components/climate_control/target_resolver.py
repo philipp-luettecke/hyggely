@@ -95,6 +95,7 @@ class RoomSnapshot:
 
     `room_mode` heat carries `override_temperature`; heat and off end at
     `mode_expires_at` (None: no expiry). `away` is the same for all rooms.
+    `window_open_since` is set while the window is open.
     """
 
     now: datetime
@@ -106,6 +107,7 @@ class RoomSnapshot:
     override_temperature: float | None = None
     mode_expires_at: datetime | None = None
     away: bool = False
+    window_open_since: datetime | None = None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -157,14 +159,16 @@ def heat_temperature(snapshot: RoomSnapshot) -> float:
     """Return the temperature heat without a temperature overrides with.
 
     That is the current target; a room switched off instead heats to what auto
-    would heat to, so leaving off never holds frost protection.
+    would heat to, so leaving off never holds frost protection. An open window
+    is left out: heat gets the target the room has once the window is closed.
     """
-    decision = resolve(snapshot)
+    closed = replace(snapshot, window_open_since=None)
+    decision = resolve(closed)
     if decision.room_mode is not RoomMode.OFF:
         return decision.target_temperature
     return resolve(
         replace(
-            snapshot,
+            closed,
             room_mode=RoomMode.AUTO,
             override_temperature=None,
             mode_expires_at=None,
@@ -173,14 +177,32 @@ def heat_temperature(snapshot: RoomSnapshot) -> float:
 
 
 def resolve(snapshot: RoomSnapshot) -> Decision:
-    """Decide the target of a room from its snapshot, highest rule first."""
+    """Decide the target of a room from its snapshot, highest rule first.
+
+    An open window keeps the room mode with its override expiry, so closing it
+    returns to the room mode, unless it expired meanwhile.
+    """
     schedule = snapshot.schedule
     room_mode = snapshot.room_mode
     expires_at = snapshot.mode_expires_at
     if expires_at is not None and snapshot.now >= expires_at:
         room_mode = RoomMode.AUTO
+        expires_at = None
     reevaluate_at = _earliest(schedule.next_block_boundary, expires_at)
 
+    if snapshot.window_open_since is not None:
+        return Decision(
+            room_mode=room_mode,
+            target_temperature=snapshot.frost_temperature,
+            level=Level.FROST,
+            trv_mode=TrvMode.OFF,
+            reason=Reason(
+                code=ReasonCode.WINDOW_OPEN,
+                params={"since": snapshot.window_open_since},
+            ),
+            reevaluate_at=reevaluate_at,
+            mode_expires_at=expires_at,
+        )
     if room_mode is RoomMode.OFF:
         return Decision(
             room_mode=RoomMode.OFF,

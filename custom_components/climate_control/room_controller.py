@@ -55,6 +55,8 @@ from .const import (
     CONF_OVERRIDE_EXPIRY_POLICY,
     CONF_SCHEDULE,
     CONF_TRVS,
+    CONF_WINDOW_CONTACTS,
+    CONF_WINDOW_DELAY,
     DATA_TARGETS_BEFORE_RELOAD,
     DEFAULT_LEAD_TIME,
     DEFAULT_NIGHT_TEMPERATURE,
@@ -82,6 +84,7 @@ from .target_resolver import (
     resolve,
 )
 from .trv_reachability import TrvReachability
+from .window import WindowContacts
 
 RECENT_DECISIONS = 20
 
@@ -173,6 +176,11 @@ class RoomController:
         self._frost_temperature = float(entry.options[CONF_FROST_TEMPERATURE])
         self._away_temperature = float(entry.options[CONF_AWAY_TEMPERATURE])
         self._override_expiry = _override_expiry(entry, subentry)
+        self._window = WindowContacts(
+            hass,
+            subentry.data.get(CONF_WINDOW_CONTACTS, []),
+            timedelta(**entry.options[CONF_WINDOW_DELAY]),
+        )
         self._choice = room_modes.get(self.room_id)
         self._decision: Decision | None = None
         self._next_block_boundary: datetime | None = None
@@ -269,6 +277,9 @@ class RoomController:
         )
         self._unsubscribers.append(
             self._presence.async_add_listener(self._async_request_evaluation)
+        )
+        self._unsubscribers.append(
+            self._window.async_track(self._async_request_evaluation)
         )
         self._unsubscribers.append(self._reachability.async_start())
         await self._async_evaluate(catch_up=self._hass.state is not CoreState.running)
@@ -458,6 +469,7 @@ class RoomController:
             override_temperature=self._choice.override_temperature,
             mode_expires_at=self._choice.expires_at,
             away=self._presence.away,
+            window_open_since=self._window.open_since,
         )
 
     @callback

@@ -84,6 +84,7 @@
           "data": {
             "name": "Name",
             "trvs": "Radiator thermostat",
+            "window_contacts": "Window contacts",
             "schedule": "Schedule",
             "comfort_temperature": "Comfort temperature",
             "night_temperature": "Night temperature",
@@ -95,6 +96,7 @@
           },
           "data_description": {
             "trvs": "The radiator thermostat (TRV) this room controls.",
+            "window_contacts": "While one of these contacts is open for longer than the window delay, the room gets frost protection. An unreachable contact counts as closed.",
             "schedule": "Schedule helper of the room. During a block its level applies (comfort or night, comfort if none is set), eco outside.",
             "comfort_temperature": "Target temperature during a block with level comfort or without a level.",
             "night_temperature": "Target temperature during a block with level night.",
@@ -110,6 +112,7 @@
           "data": {
             "name": "Name",
             "trvs": "Radiator thermostat",
+            "window_contacts": "Window contacts",
             "schedule": "Schedule",
             "comfort_temperature": "Comfort temperature",
             "night_temperature": "Night temperature",
@@ -121,6 +124,7 @@
           },
           "data_description": {
             "trvs": "The radiator thermostat (TRV) this room controls.",
+            "window_contacts": "While one of these contacts is open for longer than the window delay, the room gets frost protection. An unreachable contact counts as closed.",
             "schedule": "Schedule helper of the room. During a block its level applies (comfort or night, comfort if none is set), eco outside.",
             "comfort_temperature": "Target temperature during a block with level comfort or without a level.",
             "night_temperature": "Target temperature during a block with level night.",

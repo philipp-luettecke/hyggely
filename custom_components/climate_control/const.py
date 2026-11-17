@@ -60,6 +60,7 @@ SUBENTRY_TYPE_ROOM: Final = "room"
 
 CONF_NAME: Final = "name"
 CONF_TRVS: Final = "trvs"
+CONF_WINDOW_CONTACTS: Final = "window_contacts"
 CONF_SCHEDULE: Final = "schedule"
 CONF_COMFORT_TEMPERATURE: Final = "comfort_temperature"
 CONF_NIGHT_TEMPERATURE: Final = "night_temperature"
