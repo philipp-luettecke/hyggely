@@ -1,0 +1,82 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Heizungssteuerung",
+        "description": "Globale Einstellungen, die für alle Räume gelten. Du kannst sie später in den Optionen ändern.",
+        "data": {
+          "persons": "Personen",
+          "away_delay": "Abwesend-Verzögerung",
+          "notify_targets": "Benachrichtigungsempfänger",
+          "quiet_start": "Beginn der Ruhezeit",
+          "quiet_end": "Ende der Ruhezeit",
+          "away_temperature": "Temperatur bei Abwesenheit",
+          "vacation_temperature": "Temperatur im Urlaub",
+          "frost_temperature": "Frostschutz-Temperatur",
+          "override_expiry_policy": "Rückfall",
+          "override_expiry_duration": "Dauer der Übersteuerung",
+          "window_delay": "Fenster-Verzögerung"
+        },
+        "data_description": {
+          "persons": "Das Haus gilt als abwesend, wenn keine dieser Personen zu Hause ist.",
+          "away_delay": "So lange müssen alle Personen weg sein, bevor das Haus absenkt.",
+          "notify_targets": "Benachrichtigungs-Entitäten, die Nachrichten erhalten, z. B. eure Handys.",
+          "quiet_start": "Ab dieser Uhrzeit werden keine Nachrichten gesendet.",
+          "quiet_end": "Zu dieser Uhrzeit werden zurückgehaltene Nachrichten gesendet, die noch zutreffen.",
+          "away_temperature": "Solltemperatur, wenn niemand zu Hause ist.",
+          "vacation_temperature": "Solltemperatur während des Urlaubs.",
+          "frost_temperature": "Solltemperatur bei offenem Fenster oder ausgeschaltetem Raum.",
+          "override_expiry_policy": "Wann eine manuelle Übersteuerung zum Zeitplan zurückkehrt. Räume können abweichen.",
+          "override_expiry_duration": "Dauer für die Rückfallregeln „Nach Dauer“ und „Früheres von“.",
+          "window_delay": "So lange muss ein Fenster offen sein, bevor der Raum auf Frostschutz geht."
+        }
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Die Heizungssteuerung ist bereits eingerichtet. Ändere die Einstellungen in den Optionen."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Heizungssteuerung",
+        "description": "Globale Einstellungen, die für alle Räume gelten.",
+        "data": {
+          "persons": "Personen",
+          "away_delay": "Abwesend-Verzögerung",
+          "notify_targets": "Benachrichtigungsempfänger",
+          "quiet_start": "Beginn der Ruhezeit",
+          "quiet_end": "Ende der Ruhezeit",
+          "away_temperature": "Temperatur bei Abwesenheit",
+          "vacation_temperature": "Temperatur im Urlaub",
+          "frost_temperature": "Frostschutz-Temperatur",
+          "override_expiry_policy": "Rückfall",
+          "override_expiry_duration": "Dauer der Übersteuerung",
+          "window_delay": "Fenster-Verzögerung"
+        },
+        "data_description": {
+          "persons": "Das Haus gilt als abwesend, wenn keine dieser Personen zu Hause ist.",
+          "away_delay": "So lange müssen alle Personen weg sein, bevor das Haus absenkt.",
+          "notify_targets": "Benachrichtigungs-Entitäten, die Nachrichten erhalten, z. B. eure Handys.",
+          "quiet_start": "Ab dieser Uhrzeit werden keine Nachrichten gesendet.",
+          "quiet_end": "Zu dieser Uhrzeit werden zurückgehaltene Nachrichten gesendet, die noch zutreffen.",
+          "away_temperature": "Solltemperatur, wenn niemand zu Hause ist.",
+          "vacation_temperature": "Solltemperatur während des Urlaubs.",
+          "frost_temperature": "Solltemperatur bei offenem Fenster oder ausgeschaltetem Raum.",
+          "override_expiry_policy": "Wann eine manuelle Übersteuerung zum Zeitplan zurückkehrt. Räume können abweichen.",
+          "override_expiry_duration": "Dauer für die Rückfallregeln „Nach Dauer“ und „Früheres von“.",
+          "window_delay": "So lange muss ein Fenster offen sein, bevor der Raum auf Frostschutz geht."
+        }
+      }
+    }
+  },
+  "selector": {
+    "override_expiry_policy": {
+      "options": {
+        "next_block": "Am nächsten Schaltpunkt",
+        "duration": "Nach Dauer",
+        "earliest": "Früheres von nächstem Schaltpunkt und Dauer"
+      }
+    }
+  }
+}

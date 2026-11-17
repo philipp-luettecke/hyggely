@@ -1,0 +1,82 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Heating control",
+        "description": "Global settings that apply to all rooms. You can change them later in the options.",
+        "data": {
+          "persons": "Persons",
+          "away_delay": "Away delay",
+          "notify_targets": "Notification recipients",
+          "quiet_start": "Quiet time start",
+          "quiet_end": "Quiet time end",
+          "away_temperature": "Away temperature",
+          "vacation_temperature": "Vacation temperature",
+          "frost_temperature": "Frost protection temperature",
+          "override_expiry_policy": "Override expiry",
+          "override_expiry_duration": "Override duration",
+          "window_delay": "Window delay"
+        },
+        "data_description": {
+          "persons": "The house is away when all of these persons are not home.",
+          "away_delay": "How long all persons must be away before the house lowers the temperature.",
+          "notify_targets": "Notification entities that receive messages, e.g. your phones.",
+          "quiet_start": "No notifications are sent from this time on.",
+          "quiet_end": "Held back notifications that still apply are sent at this time.",
+          "away_temperature": "Target temperature while nobody is home.",
+          "vacation_temperature": "Target temperature during a vacation.",
+          "frost_temperature": "Target temperature while a window is open or a room is off.",
+          "override_expiry_policy": "When a manual override returns to the schedule. Rooms can deviate.",
+          "override_expiry_duration": "Duration used by the override expiry rules \"After duration\" and \"Earlier of\".",
+          "window_delay": "How long a window must be open before the room switches to frost protection."
+        }
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Heating control is already set up. Change its settings in the options."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Heating control",
+        "description": "Global settings that apply to all rooms.",
+        "data": {
+          "persons": "Persons",
+          "away_delay": "Away delay",
+          "notify_targets": "Notification recipients",
+          "quiet_start": "Quiet time start",
+          "quiet_end": "Quiet time end",
+          "away_temperature": "Away temperature",
+          "vacation_temperature": "Vacation temperature",
+          "frost_temperature": "Frost protection temperature",
+          "override_expiry_policy": "Override expiry",
+          "override_expiry_duration": "Override duration",
+          "window_delay": "Window delay"
+        },
+        "data_description": {
+          "persons": "The house is away when all of these persons are not home.",
+          "away_delay": "How long all persons must be away before the house lowers the temperature.",
+          "notify_targets": "Notification entities that receive messages, e.g. your phones.",
+          "quiet_start": "No notifications are sent from this time on.",
+          "quiet_end": "Held back notifications that still apply are sent at this time.",
+          "away_temperature": "Target temperature while nobody is home.",
+          "vacation_temperature": "Target temperature during a vacation.",
+          "frost_temperature": "Target temperature while a window is open or a room is off.",
+          "override_expiry_policy": "When a manual override returns to the schedule. Rooms can deviate.",
+          "override_expiry_duration": "Duration used by the override expiry rules \"After duration\" and \"Earlier of\".",
+          "window_delay": "How long a window must be open before the room switches to frost protection."
+        }
+      }
+    }
+  },
+  "selector": {
+    "override_expiry_policy": {
+      "options": {
+        "next_block": "At the next block boundary",
+        "duration": "After duration",
+        "earliest": "Earlier of next block boundary and duration"
+      }
+    }
+  }
+}
