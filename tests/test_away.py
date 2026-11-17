@@ -63,6 +63,7 @@ async def test_house_is_away_once_all_persons_are_gone_for_the_away_delay(
     assert away_state(hass, room.entry).state == "on"
     assert room.state(hass).state == "auto"
     assert room.state(hass).attributes["temperature"] == 16.0
+    assert room.state(hass).attributes["level"] == "away"
     assert commands(room.trv) == [HEAT_21, HEAT_16]
 
 

@@ -18,12 +18,14 @@ from typing import Any
 class Level(StrEnum):
     """Named temperature tiers.
 
-    Schedule levels are comfort, night and eco (outside blocks); frost is global.
+    Schedule levels are comfort, night and eco (outside blocks); away and frost
+    are global.
     """
 
     COMFORT = "comfort"
     NIGHT = "night"
     ECO = "eco"
+    AWAY = "away"
     FROST = "frost"
 
 
@@ -129,6 +131,7 @@ def resolve(snapshot: RoomSnapshot) -> Decision:
         return Decision(
             room_mode=RoomMode.AUTO,
             target_temperature=snapshot.away_temperature,
+            level=Level.AWAY,
             trv_mode=TrvMode.HEAT,
             reason=Reason(code=ReasonCode.AWAY),
             reevaluate_at=schedule.next_block_boundary,
