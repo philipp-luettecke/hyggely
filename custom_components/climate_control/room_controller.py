@@ -53,7 +53,6 @@ from .const import (
     CONF_VACATION_TEMPERATURE,
     CONF_WINDOW_CONTACTS,
     CONF_WINDOW_DELAY,
-    DATA_TARGETS_BEFORE_RELOAD,
     DEFAULT_LEAD_TIME,
     DEFAULT_NIGHT_TEMPERATURE,
     DOMAIN,
@@ -150,7 +149,8 @@ class RoomController:
     ) -> None:
         """Create the controller for the room `subentry` of the main entry.
 
-        The room continues with the room mode saved in `room_modes`.
+        The room continues with the room mode saved in `room_modes`; a target
+        differing from the saved one is logged as a change.
         """
         self._hass = hass
         self._entry = entry
@@ -188,9 +188,6 @@ class RoomController:
         self._snapshot: RoomSnapshot | None = None
         self._recent_decisions: deque[tuple[datetime, Decision]] = deque(
             maxlen=RECENT_DECISIONS
-        )
-        self._target_before_reload = hass.data.get(DATA_TARGETS_BEFORE_RELOAD, {}).pop(
-            self.room_id, None
         )
         self._listeners: list[Callable[[], None]] = []
         self._unsubscribers: list[CALLBACK_TYPE] = []
@@ -354,14 +351,10 @@ class RoomController:
 
     @callback
     def async_stop(self) -> None:
-        """Unsubscribe all inputs and timers; a reload compares against the target."""
+        """Unsubscribe all inputs and timers."""
         while self._unsubscribers:
             self._unsubscribers.pop()()
         self._cancel_pending_reevaluation()
-        if self.target_temperature is not None:
-            self._hass.data.setdefault(DATA_TARGETS_BEFORE_RELOAD, {})[self.room_id] = (
-                self.target_temperature
-            )
 
     @callback
     def _async_request_evaluation(self) -> None:
@@ -483,13 +476,13 @@ class RoomController:
                 and self._choice.room_mode is not RoomMode.AUTO
             ):
                 await self._async_choose(RoomMode.AUTO, None)
-            previous_target = (
-                self._decision.target_temperature
-                if self._decision
-                else self._target_before_reload
-            )
-            if previous_target not in (None, decision.target_temperature):
-                self._announce_target_change(decision, now)
+            previous_target = self._room_modes.target(self.room_id)
+            if previous_target != decision.target_temperature:
+                if previous_target is not None:
+                    self._announce_target_change(decision, now)
+                await self._room_modes.async_save_target(
+                    self.room_id, decision.target_temperature
+                )
             self._decision = decision
             self._notify_listeners()
             if decision.reevaluate_at is not None and decision.reevaluate_at > now:
