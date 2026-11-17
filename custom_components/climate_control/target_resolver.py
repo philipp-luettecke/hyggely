@@ -155,6 +155,27 @@ def mode_expires_at(
     return _earliest(next_block_boundary, after_duration)
 
 
+def heat_temperature(snapshot: RoomSnapshot) -> float:
+    """Return the temperature heat without a temperature overrides with.
+
+    That is the current target; a room switched off instead heats to what auto
+    would heat to, so leaving off never holds frost protection. An open window
+    is left out: heat gets the target the room has once the window is closed.
+    """
+    closed = replace(snapshot, window_open_since=None)
+    decision = resolve(closed)
+    if decision.room_mode is not RoomMode.OFF:
+        return decision.target_temperature
+    return resolve(
+        replace(
+            closed,
+            room_mode=RoomMode.AUTO,
+            override_temperature=None,
+            mode_expires_at=None,
+        )
+    ).target_temperature
+
+
 def resolve(snapshot: RoomSnapshot) -> Decision:
     """Decide the target of a room from its snapshot, highest rule first.
 
@@ -222,15 +243,6 @@ def resolve(snapshot: RoomSnapshot) -> Decision:
         ),
         reevaluate_at=schedule.next_block_boundary,
     )
-
-
-def heat_temperature(snapshot: RoomSnapshot) -> float:
-    """Return the temperature heat without a temperature overrides with.
-
-    That is the current target, or while the window is open the target the room
-    gets back once it is closed.
-    """
-    return resolve(replace(snapshot, window_open_since=None)).target_temperature
 
 
 def _earliest(*moments: datetime | None) -> datetime | None:
