@@ -8,7 +8,7 @@ away, schedule. New inputs extend `RoomSnapshot` and take their place in it.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
 from enum import StrEnum
@@ -201,79 +201,133 @@ def resolve(snapshot: RoomSnapshot) -> Decision:
     An open window keeps the room mode with its override expiry, so closing it
     returns to the room mode, unless it expired meanwhile.
     """
-    schedule = snapshot.schedule
     room_mode = snapshot.room_mode
     expires_at = snapshot.mode_expires_at
     if expires_at is not None and snapshot.now >= expires_at:
         room_mode = RoomMode.AUTO
         expires_at = None
-    reevaluate_at = _earliest(schedule.next_block_boundary, expires_at)
+    situation = _Situation(
+        snapshot=snapshot,
+        room_mode=room_mode,
+        mode_expires_at=expires_at,
+        reevaluate_at=_earliest(snapshot.schedule.next_block_boundary, expires_at),
+    )
+    for rule in _RULES:
+        if (decision := rule(situation)) is not None:
+            return decision
+    return _schedule_level(situation)
 
-    if snapshot.window_open_since is not None:
-        return Decision(
-            room_mode=room_mode,
-            target_temperature=snapshot.frost_temperature,
-            level=Level.FROST,
-            trv_mode=TrvMode.OFF,
-            reason=Reason(
-                code=ReasonCode.WINDOW_OPEN,
-                params={"since": snapshot.window_open_since},
-            ),
-            reevaluate_at=reevaluate_at,
-            mode_expires_at=expires_at,
-        )
-    if room_mode is RoomMode.OFF:
-        return Decision(
-            room_mode=RoomMode.OFF,
-            target_temperature=snapshot.frost_temperature,
-            level=Level.FROST,
-            trv_mode=TrvMode.OFF,
-            reason=Reason(code=ReasonCode.ROOM_OFF, params={"until": expires_at}),
-            reevaluate_at=reevaluate_at,
-            mode_expires_at=expires_at,
-        )
-    if room_mode is RoomMode.HEAT and snapshot.override_temperature is not None:
-        return Decision(
-            room_mode=RoomMode.HEAT,
-            target_temperature=snapshot.override_temperature,
-            level=None,
-            trv_mode=TrvMode.HEAT,
-            reason=Reason(code=ReasonCode.OVERRIDE, params={"until": expires_at}),
-            reevaluate_at=reevaluate_at,
-            mode_expires_at=expires_at,
-        )
-    if snapshot.house_mode is HouseMode.OFF:
-        return Decision(
-            room_mode=RoomMode.AUTO,
-            target_temperature=snapshot.frost_temperature,
-            level=Level.FROST,
-            trv_mode=TrvMode.OFF,
-            reason=Reason(code=ReasonCode.HOUSE_OFF),
-            reevaluate_at=schedule.next_block_boundary,
-        )
-    if snapshot.house_mode is HouseMode.VACATION:
-        return Decision(
-            room_mode=RoomMode.AUTO,
-            target_temperature=snapshot.vacation_temperature,
-            level=Level.VACATION,
-            trv_mode=TrvMode.HEAT,
-            reason=Reason(
-                code=ReasonCode.VACATION, params={"until": snapshot.vacation_end}
-            ),
-            reevaluate_at=schedule.next_block_boundary,
-        )
-    if snapshot.away:
-        return Decision(
-            room_mode=RoomMode.AUTO,
-            target_temperature=snapshot.away_temperature,
-            level=Level.AWAY,
-            trv_mode=TrvMode.HEAT,
-            reason=Reason(code=ReasonCode.AWAY),
-            reevaluate_at=schedule.next_block_boundary,
-        )
+
+@dataclass(frozen=True, kw_only=True)
+class _Situation:
+    """A snapshot with the room mode still in force and its override expiry."""
+
+    snapshot: RoomSnapshot
+    room_mode: RoomMode
+    mode_expires_at: datetime | None
+    reevaluate_at: datetime | None
+
+
+def _window_open(situation: _Situation) -> Decision | None:
+    snapshot = situation.snapshot
+    if snapshot.window_open_since is None:
+        return None
+    return Decision(
+        room_mode=situation.room_mode,
+        target_temperature=snapshot.frost_temperature,
+        level=Level.FROST,
+        trv_mode=TrvMode.OFF,
+        reason=Reason(
+            code=ReasonCode.WINDOW_OPEN,
+            params={"since": snapshot.window_open_since},
+        ),
+        reevaluate_at=situation.reevaluate_at,
+        mode_expires_at=situation.mode_expires_at,
+    )
+
+
+def _room_off(situation: _Situation) -> Decision | None:
+    if situation.room_mode is not RoomMode.OFF:
+        return None
+    return Decision(
+        room_mode=RoomMode.OFF,
+        target_temperature=situation.snapshot.frost_temperature,
+        level=Level.FROST,
+        trv_mode=TrvMode.OFF,
+        reason=Reason(
+            code=ReasonCode.ROOM_OFF, params={"until": situation.mode_expires_at}
+        ),
+        reevaluate_at=situation.reevaluate_at,
+        mode_expires_at=situation.mode_expires_at,
+    )
+
+
+def _override(situation: _Situation) -> Decision | None:
+    temperature = situation.snapshot.override_temperature
+    if situation.room_mode is not RoomMode.HEAT or temperature is None:
+        return None
+    return Decision(
+        room_mode=RoomMode.HEAT,
+        target_temperature=temperature,
+        level=None,
+        trv_mode=TrvMode.HEAT,
+        reason=Reason(
+            code=ReasonCode.OVERRIDE, params={"until": situation.mode_expires_at}
+        ),
+        reevaluate_at=situation.reevaluate_at,
+        mode_expires_at=situation.mode_expires_at,
+    )
+
+
+def _house_off(situation: _Situation) -> Decision | None:
+    snapshot = situation.snapshot
+    if snapshot.house_mode is not HouseMode.OFF:
+        return None
     return Decision(
         room_mode=RoomMode.AUTO,
-        target_temperature=snapshot.level_temperatures[schedule.level],
+        target_temperature=snapshot.frost_temperature,
+        level=Level.FROST,
+        trv_mode=TrvMode.OFF,
+        reason=Reason(code=ReasonCode.HOUSE_OFF),
+        reevaluate_at=snapshot.schedule.next_block_boundary,
+    )
+
+
+def _vacation(situation: _Situation) -> Decision | None:
+    snapshot = situation.snapshot
+    if snapshot.house_mode is not HouseMode.VACATION:
+        return None
+    return Decision(
+        room_mode=RoomMode.AUTO,
+        target_temperature=snapshot.vacation_temperature,
+        level=Level.VACATION,
+        trv_mode=TrvMode.HEAT,
+        reason=Reason(
+            code=ReasonCode.VACATION, params={"until": snapshot.vacation_end}
+        ),
+        reevaluate_at=snapshot.schedule.next_block_boundary,
+    )
+
+
+def _away(situation: _Situation) -> Decision | None:
+    snapshot = situation.snapshot
+    if not snapshot.away:
+        return None
+    return Decision(
+        room_mode=RoomMode.AUTO,
+        target_temperature=snapshot.away_temperature,
+        level=Level.AWAY,
+        trv_mode=TrvMode.HEAT,
+        reason=Reason(code=ReasonCode.AWAY),
+        reevaluate_at=snapshot.schedule.next_block_boundary,
+    )
+
+
+def _schedule_level(situation: _Situation) -> Decision:
+    schedule = situation.snapshot.schedule
+    return Decision(
+        room_mode=RoomMode.AUTO,
+        target_temperature=situation.snapshot.level_temperatures[schedule.level],
         level=schedule.level,
         trv_mode=TrvMode.HEAT,
         reason=Reason(
@@ -282,6 +336,17 @@ def resolve(snapshot: RoomSnapshot) -> Decision:
         ),
         reevaluate_at=schedule.next_block_boundary,
     )
+
+
+_RULES: tuple[Callable[[_Situation], Decision | None], ...] = (
+    _window_open,
+    _room_off,
+    _override,
+    _house_off,
+    _vacation,
+    _away,
+)
+"""Rules that may decide, highest first; the schedule level decides otherwise."""
 
 
 def _earliest(*moments: datetime | None) -> datetime | None:

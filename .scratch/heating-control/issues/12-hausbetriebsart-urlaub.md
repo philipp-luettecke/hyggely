@@ -6,7 +6,7 @@ Spec: `.scratch/heating-control/spec.md`
 
 **Blocked by:** 06
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Die Hausbetriebsart ist als Auswahl-Entität mit Automatik, Urlaub und Aus verfügbar
 - [ ] Das Urlaubsende ist als Datum-Uhrzeit-Entität verfügbar. Bei Erreichen wechselt die Hausbetriebsart auf Automatik
@@ -32,3 +32,5 @@ Spec: `.scratch/heating-control/spec.md`
 **Nebenbei behoben (Room Controller):** An einem Schaltpunkt fordern der Neubewertungs-Timer und der Zeitplan-Helfer gleichzeitig eine Bewertung an. Welche zuerst lief, hing von der Reihenfolge der Timer in der Event-Loop ab; mit einem gerade verlorenen Befehl (Bridge-Ausfall) ging er dann doppelt raus. Die zusätzlichen Plattformen haben diese Reihenfolge verschoben, sodass `test_command_lost_before_the_outage_was_noticed_is_sent_again` (13) fehlschlug. Gleichzeitige Anforderungen werden jetzt zu einer Bewertung zusammengefasst.
 
 **Tests:** `tests/test_house_mode.py` (Urlaub in allen Räumen bis zum Ende, Grund-Text, Ablehnung ohne künftiges Ende, Ende verschieben/vorziehen, Haus aus, Übersteuerung > Urlaub, Übersteuerung > Haus aus, Raum aus > Haus aus, Urlaub > Abwesend, Haus aus > Abwesend, Fenster > Urlaub/Haus aus/Abwesend, Heizen bei Haus aus und Urlaub, Neustart mit Urlaub, Urlaub während des Neustarts abgelaufen, Neustart mit Haus aus, geänderte Urlaubstemperatur). Fenster > Raum aus deckt `test_window_open.py` ab, Übersteuerung > Abwesend und Abwesend > Zeitplan `test_away.py`. Hilfe `House` in `tests/scenario.py`; Übersetzungstest in `tests/test_translations.py`.
+
+**Abgeschlossen:** Merge-Commits `6b18908` und `fd421ff` (Rangfolge als geordnete Regelliste) auf `feat/heating-control`. Ergebnis: Hausbetriebsart und Urlaubsende am Gerät „Haus“, vollständige Rangfolge per Szenario getestet; 142 Tests grün. Heizen ohne Temperatur bei „Haus aus“ folgt der offenen Frage aus Ticket 07.
