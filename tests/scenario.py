@@ -365,10 +365,57 @@ class Persons:
 
 def away_state(hass: HomeAssistant, entry: ConfigEntry) -> State:
     """Return the state of the global away entity."""
+    return _state_of_house_entity(hass, entry, "binary_sensor", "away")
+
+
+def _state_of_house_entity(
+    hass: HomeAssistant, entry: ConfigEntry, domain: str, key: str
+) -> State:
     entity_id = er.async_get(hass).async_get_entity_id(
-        "binary_sensor", DOMAIN, f"{entry.entry_id}_away"
+        domain, DOMAIN, f"{entry.entry_id}_{key}"
     )
     assert entity_id is not None
     state = hass.states.get(entity_id)
     assert state is not None
     return state
+
+
+class House:
+    """House mode and vacation end, set like Siri or an automation does."""
+
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
+        """Use the house entities of the main entry."""
+        self._hass = hass
+        self._entry = entry
+
+    @property
+    def house_mode(self) -> State:
+        """Return the state of the house mode entity."""
+        return _state_of_house_entity(self._hass, self._entry, "select", "house_mode")
+
+    @property
+    def vacation_end(self) -> State:
+        """Return the state of the vacation end entity."""
+        return _state_of_house_entity(
+            self._hass, self._entry, "datetime", "vacation_end"
+        )
+
+    async def select(self, house_mode: str) -> None:
+        """Select a house mode: `auto`, `vacation` or `off`."""
+        await self._hass.services.async_call(
+            "select",
+            "select_option",
+            {"entity_id": self.house_mode.entity_id, "option": house_mode},
+            blocking=True,
+        )
+        await self._hass.async_block_till_done()
+
+    async def set_vacation_end(self, local_time: str) -> None:
+        """Set the vacation end in local time, e.g. `2026-11-20 18:00`."""
+        await self._hass.services.async_call(
+            "datetime",
+            "set_value",
+            {"entity_id": self.vacation_end.entity_id, "datetime": local(local_time)},
+            blocking=True,
+        )
+        await self._hass.async_block_till_done()
