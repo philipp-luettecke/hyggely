@@ -65,7 +65,7 @@ class QuietTime:
     end: time
 
     def contains(self, moment: datetime) -> bool:
-        """Return whether `moment` lies in the quiet time; start equal to end is none."""
+        """Return whether `moment` lies in the quiet time (never if start == end)."""
         now = dt_util.as_local(moment).time()
         if self.start <= self.end:
             return self.start <= now < self.end
@@ -76,7 +76,9 @@ class QuietTime:
         local = dt_util.as_local(moment)
         end = datetime.combine(local.date(), self.end, local.tzinfo)
         if end <= local:
-            end = datetime.combine(local.date() + timedelta(days=1), self.end, local.tzinfo)
+            end = datetime.combine(
+                local.date() + timedelta(days=1), self.end, local.tzinfo
+            )
         return dt_util.as_utc(end)
 
 

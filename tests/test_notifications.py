@@ -183,9 +183,10 @@ async def test_closing_the_window_sends_no_message_and_opening_it_again_does(
     for moment in ("12:41", "13:00", "13:01"):
         await clock.advance_to(f"2026-11-16 {moment}:00")
 
-    assert house.anna.messages == [
-        Message(TITLE, "Fenster seit über 20 min offen: Wohnzimmer")
-    ] * 2
+    assert (
+        house.anna.messages
+        == [Message(TITLE, "Fenster seit über 20 min offen: Wohnzimmer")] * 2
+    )
 
 
 async def test_window_closed_before_the_message_goes_out_is_not_reported(
