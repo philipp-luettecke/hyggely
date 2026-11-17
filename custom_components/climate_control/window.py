@@ -37,6 +37,7 @@ class WindowContacts:
         self._contacts = list(contacts)
         self._window_delay = window_delay
         self._open_since: datetime | None = None
+        self._contact_open = False
         self._on_change: Callable[[], None] | None = None
         self._cancel_timer: CALLBACK_TYPE | None = None
 
@@ -45,9 +46,17 @@ class WindowContacts:
         """Return since when the window is open; None while it counts as closed."""
         return self._open_since
 
+    @property
+    def contact_open(self) -> bool:
+        """Return whether any contact is open, window delay passed or not."""
+        return self._contact_open
+
     @callback
     def async_track(self, on_change: Callable[[], None]) -> CALLBACK_TYPE:
         """Derive the window from the contacts and call `on_change` when it changes.
+
+        A contact opening or the last one closing within the window delay counts
+        as a change, too.
 
         Contacts already open count from their last change, so reloading the
         entry keeps an open window open. Returns the unsubscriber.
@@ -99,8 +108,10 @@ class WindowContacts:
                 self._cancel_timer = async_track_point_in_utc_time(
                     self._hass, self._window_delay_passed, open_from
                 )
-        if open_since != self._open_since:
+        contact_open = bool(opened)
+        if open_since != self._open_since or contact_open != self._contact_open:
             self._open_since = open_since
+            self._contact_open = contact_open
             if self._on_change is not None:
                 self._on_change()
 

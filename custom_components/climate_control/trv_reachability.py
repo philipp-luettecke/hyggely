@@ -12,6 +12,7 @@ from homeassistant.core import (
     Event,
     EventStateChangedData,
     HomeAssistant,
+    State,
     callback,
 )
 from homeassistant.helpers import entity_registry as er
@@ -31,12 +32,13 @@ class TrvReachability:
 
     A TRV is unreachable while its climate entity or the temperature sensor of its
     device is unavailable: on a bridge outage the climate entity of a tado TRV
-    only freezes with its old values (ticket 01). A TRV takes commands while it is
-    reachable and reports a valid mode. A TRV that could not take commands is
-    handed to `on_back` as soon as it can again. A new state of a TRV that took
-    commands before and still does goes to `on_report`; frozen values and the
-    return from an outage never do. A TRV unreachable for longer than
-    `OFFLINE_AFTER` is offline; `on_offline_changed` reports changes.
+    only freezes with its old values. A TRV takes commands while it is reachable
+    and reports a valid mode. A TRV that could not take commands, unreachable or
+    with an invalid mode, is handed to `on_reachable_again` as soon as it can
+    again. A new state of a TRV that took commands before and still does goes to
+    `on_report`, with the state before; frozen values and the return from an
+    outage never do. A TRV unreachable for longer than `OFFLINE_AFTER` is
+    offline; `on_offline_changed` reports changes.
     """
 
     def __init__(
@@ -44,8 +46,8 @@ class TrvReachability:
         hass: HomeAssistant,
         trvs: list[str],
         *,
-        on_back: Callable[[str], None],
-        on_report: Callable[[str], None],
+        on_reachable_again: Callable[[str], None],
+        on_report: Callable[[str, State | None], None],
         on_offline_changed: Callable[[], None],
     ) -> None:
         """Find the temperature sensor on the device of each TRV."""
@@ -54,7 +56,7 @@ class TrvReachability:
         self._trv_of = {trv: trv for trv in trvs} | {
             sensor: trv for trv, sensor in self._sensors.items() if sensor is not None
         }
-        self._on_back = on_back
+        self._on_reachable_again = on_reachable_again
         self._on_report = on_report
         self._on_offline_changed = on_offline_changed
         self._missed: set[str] = set()
@@ -65,6 +67,13 @@ class TrvReachability:
     def entities(self) -> list[str]:
         """Return the climate entities of the TRVs and the sensors on their devices."""
         return list(self._trv_of)
+
+    @property
+    def unreachable(self) -> frozenset[str]:
+        """Return the TRVs whose climate entity or temperature sensor is unavailable."""
+        return frozenset(
+            trv for trv in self._sensors if self._unreachable_since(trv) is not None
+        )
 
     @property
     def offline(self) -> frozenset[str]:
@@ -105,9 +114,9 @@ class TrvReachability:
             self._missed.add(trv)
         elif trv in self._missed:
             self._missed.discard(trv)
-            self._on_back(trv)
+            self._on_reachable_again(trv)
         elif entity_id == trv:
-            self._on_report(trv)
+            self._on_report(trv, event.data["old_state"])
         self._update_offline()
 
     @callback

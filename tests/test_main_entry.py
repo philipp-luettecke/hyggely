@@ -25,7 +25,7 @@ async def test_main_entry_is_set_up_from_the_ui_with_spec_defaults(
     assert entry.state is ConfigEntryState.LOADED
     assert dict(entry.options) == {
         "persons": [],
-        "away_delay": {"hours": 0, "minutes": 30, "seconds": 0},
+        "presence_delay": {"hours": 0, "minutes": 30, "seconds": 0},
         "notify_targets": [],
         "quiet_start": "22:00:00",
         "quiet_end": "07:00:00",
@@ -52,7 +52,7 @@ async def test_main_entry_can_only_be_added_once(hass: HomeAssistant) -> None:
 
 CHANGED_SETTINGS = {
     "persons": ["person.anna", "person.ben"],
-    "away_delay": {"hours": 0, "minutes": 45, "seconds": 0},
+    "presence_delay": {"hours": 0, "minutes": 45, "seconds": 0},
     "notify_targets": ["notify.anna_phone", "notify.ben_phone"],
     "quiet_start": "21:30:00",
     "quiet_end": "06:30:00",

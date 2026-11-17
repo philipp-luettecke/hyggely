@@ -28,5 +28,5 @@ jobs:
       - uses: hacs/action@main
         with:
           category: integration
-          # Repository description, topics and brand images are completed in ticket 21.
+          # Repository description, topics and brand images do not exist yet.
           ignore: brands description topics

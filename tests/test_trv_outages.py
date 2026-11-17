@@ -1,7 +1,7 @@
 """TRVs that become unreachable, e.g. on a bridge outage, and come back.
 
-Measured in ticket 01: on a bridge outage the climate entity of a TRV freezes,
-only the temperature sensor of its device becomes unavailable.
+On a bridge outage the climate entity of a TRV freezes, only the temperature
+sensor of its device becomes unavailable.
 """
 
 from homeassistant.core import HomeAssistant

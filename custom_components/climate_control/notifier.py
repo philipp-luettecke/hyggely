@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime, time, timedelta
 from enum import StrEnum
 import logging
+from typing import Any
 
 from homeassistant.components.notify import (
     ATTR_MESSAGE,
@@ -16,12 +17,13 @@ from homeassistant.components.notify import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ENTITY_ID, ATTR_FRIENDLY_NAME
-from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
+from homeassistant.core import CALLBACK_TYPE, CoreState, HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.event import async_track_point_in_utc_time
+from homeassistant.helpers.start import async_at_started
+from homeassistant.helpers.storage import Store
 from homeassistant.helpers.translation import async_get_translations
 from homeassistant.util import dt as dt_util
-from homeassistant.util.hass_dict import HassKey
 
 from .const import CONF_NOTIFY_TARGETS, CONF_QUIET_END, CONF_QUIET_START, DOMAIN
 from .room_controller import RoomController
@@ -42,6 +44,13 @@ class AlertKind(StrEnum):
     TRV_OFFLINE = "trv_offline"
 
 
+STORAGE_VERSION = 1
+
+
+def _storage_key(entry_id: str) -> str:
+    return f"{DOMAIN}.{entry_id}.sent_alerts"
+
+
 @dataclass(frozen=True)
 class Alert:
     """A window open for `WINDOW_OPEN_AFTER` in a room, or an offline TRV."""
@@ -49,12 +58,6 @@ class Alert:
     kind: AlertKind
     room_id: str
     trv: str | None = None
-
-
-# Alerts already sent when the main entry stopped for a reload.
-DATA_ALERTS_BEFORE_RELOAD: HassKey[set[Alert]] = HassKey(
-    f"{DOMAIN}_alerts_before_reload"
-)
 
 
 @dataclass(frozen=True)
@@ -93,10 +96,14 @@ def _quiet_time(entry: ConfigEntry) -> QuietTime:
 class Notifier:
     """Notifies the recipients of windows open for 20 min and offline TRVs.
 
-    Each alert goes out once and again only after it resolved and came back.
-    Alerts coming up within the bundling window share one message. During the
-    quiet time nothing goes out; at its end one message names the alerts that
-    still apply. Resolving sends nothing.
+    Each alert goes out once and again only after it resolved and came back: the
+    window closed or the TRV reachable again. Sent alerts are stored, so neither
+    a reload nor a restart repeats them, although window and offline durations
+    count from the restart; while Home Assistant starts, contacts and TRVs may
+    still be missing, so nothing counts as resolved before it runs. Alerts
+    coming up within the bundling window share one message. During the quiet
+    time nothing goes out; at its end one message names the alerts that still
+    apply. Resolving sends nothing.
     """
 
     def __init__(
@@ -109,36 +116,53 @@ class Notifier:
         self._hass = hass
         self._entry = entry
         self._rooms = rooms
-        self._targets: list[str] = list(entry.options.get(CONF_NOTIFY_TARGETS, []))
+        self._notify_entities: list[str] = list(
+            entry.options.get(CONF_NOTIFY_TARGETS, [])
+        )
         self._quiet_time = _quiet_time(entry)
-        self._sent: set[Alert] = hass.data.pop(DATA_ALERTS_BEFORE_RELOAD, set())
+        self._store: Store[dict[str, Any]] = Store(
+            hass, STORAGE_VERSION, _storage_key(entry.entry_id)
+        )
+        self._sent: set[Alert] = set()
         self._send_at: datetime | None = None
         self._unsubscribers: list[CALLBACK_TYPE] = []
         self._cancel_timer: CALLBACK_TYPE | None = None
 
-    @callback
-    def async_start(self) -> None:
-        """Follow the rooms."""
+    async def async_start(self) -> None:
+        """Load the alerts already sent and follow the rooms."""
+        data = await self._store.async_load() or {}
+        self._sent = {
+            Alert(AlertKind(saved["kind"]), saved["room_id"], saved["trv"])
+            for saved in data.get("sent", [])
+            if saved["room_id"] in self._rooms
+        }
         self._unsubscribers = [
             room.async_add_listener(self._update) for room in self._rooms.values()
         ]
+        if self._hass.state is not CoreState.running:
+            self._unsubscribers.append(
+                async_at_started(self._hass, lambda _hass: self._update())
+            )
         self._update()
 
     @callback
     def async_stop(self) -> None:
-        """Stop following the rooms; a reload does not repeat sent alerts."""
+        """Stop following the rooms."""
         while self._unsubscribers:
             self._unsubscribers.pop()()
         self._cancel_pending_timer()
-        self._hass.data[DATA_ALERTS_BEFORE_RELOAD] = set(self._sent)
 
     @callback
     def _update(self, _now: datetime | None = None) -> None:
         self._cancel_pending_timer()
         now = dt_util.utcnow()
         due, next_due = self._alerts(now)
-        self._sent &= due
-        pending = due - self._sent
+        sent = (
+            {alert for alert in self._sent if self._applies(alert)}
+            if self._hass.state is CoreState.running
+            else set(self._sent)
+        )
+        pending = due - sent
         if not pending:
             self._send_at = None
         elif self._quiet_time.contains(now):
@@ -147,9 +171,14 @@ class Notifier:
             self._send_at = now + BUNDLING_WINDOW
         if self._send_at is not None and self._send_at <= now:
             self._send_at = None
-            self._sent |= pending
+            sent |= pending
             self._entry.async_create_task(
                 self._hass, self._async_send(pending), "notify recipients"
+            )
+        if sent != self._sent:
+            self._sent = sent
+            self._entry.async_create_task(
+                self._hass, self._async_save(), "save sent alerts"
             )
         wake_at = min(
             (moment for moment in (next_due, self._send_at) if moment is not None),
@@ -177,6 +206,28 @@ class Notifier:
         return due, next_due
 
     @callback
+    def _applies(self, alert: Alert) -> bool:
+        """Return whether the window of `alert` is still open or its TRV unreachable."""
+        room = self._rooms[alert.room_id]
+        if alert.kind is AlertKind.WINDOW_OPEN:
+            return room.window_contact_open
+        return alert.trv in room.unreachable_trvs
+
+    async def _async_save(self) -> None:
+        await self._store.async_save(
+            {
+                "sent": [
+                    {
+                        "kind": alert.kind.value,
+                        "room_id": alert.room_id,
+                        "trv": alert.trv,
+                    }
+                    for alert in self._sent
+                ]
+            }
+        )
+
+    @callback
     def _cancel_pending_timer(self) -> None:
         if self._cancel_timer is not None:
             self._cancel_timer()
@@ -184,7 +235,7 @@ class Notifier:
 
     async def _async_send(self, alerts: set[Alert]) -> None:
         """Send one message about `alerts` in the language of Home Assistant."""
-        if not self._targets:
+        if not self._notify_entities:
             return
         texts = await async_get_translations(
             self._hass, self._hass.config.language, "common", [DOMAIN]
@@ -216,14 +267,16 @@ class Notifier:
                 NOTIFY_DOMAIN,
                 SERVICE_SEND_MESSAGE,
                 {
-                    ATTR_ENTITY_ID: self._targets,
+                    ATTR_ENTITY_ID: self._notify_entities,
                     ATTR_TITLE: texts[f"{_TEXTS}.notification_title"],
                     ATTR_MESSAGE: "\n".join(lines),
                 },
                 blocking=True,
             )
         except HomeAssistantError as err:
-            _LOGGER.warning("Could not notify %s: %s", ", ".join(self._targets), err)
+            _LOGGER.warning(
+                "Could not notify %s: %s", ", ".join(self._notify_entities), err
+            )
 
     def _name(self, entity_id: str) -> str:
         state = self._hass.states.get(entity_id)
@@ -234,3 +287,9 @@ class Notifier:
 
 def _minutes(duration: timedelta) -> int:
     return duration // timedelta(minutes=1)
+
+
+async def async_remove_sent_alerts(hass: HomeAssistant, entry_id: str) -> None:
+    """Delete the stored sent alerts of a removed main entry."""
+    store: Store[dict[str, Any]] = Store(hass, STORAGE_VERSION, _storage_key(entry_id))
+    await store.async_remove()

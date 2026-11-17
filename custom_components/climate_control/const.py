@@ -2,8 +2,6 @@
 
 from typing import Final
 
-from homeassistant.util.hass_dict import HassKey
-
 DOMAIN: Final = "climate_control"
 
 EVENT_TARGET_CHANGED: Final = f"{DOMAIN}_target_changed"
@@ -12,11 +10,6 @@ ATTR_REASON_CODE: Final = "reason_code"
 ATTR_REASON_PARAMS: Final = "reason_params"
 ATTR_DECIDED_AT: Final = "decided_at"
 
-# Targets of rooms whose controller stopped for a reload, by room id.
-DATA_TARGETS_BEFORE_RELOAD: HassKey[dict[str, float]] = HassKey(
-    f"{DOMAIN}_targets_before_reload"
-)
-
 
 def room_entity_unique_id(room_id: str) -> str:
     """Return the unique id of the room entity of a room."""
@@ -24,7 +17,7 @@ def room_entity_unique_id(room_id: str) -> str:
 
 
 CONF_PERSONS: Final = "persons"
-CONF_AWAY_DELAY: Final = "away_delay"
+CONF_PRESENCE_DELAY: Final = "presence_delay"
 CONF_NOTIFY_TARGETS: Final = "notify_targets"
 CONF_QUIET_START: Final = "quiet_start"
 CONF_QUIET_END: Final = "quiet_end"
@@ -46,7 +39,7 @@ OVERRIDE_EXPIRY_POLICIES: Final = [
 OVERRIDE_EXPIRY_GLOBAL: Final = "global"
 """Room setting: use the override expiry policy of the main entry."""
 
-DEFAULT_AWAY_DELAY: Final = {"hours": 0, "minutes": 30, "seconds": 0}
+DEFAULT_PRESENCE_DELAY: Final = {"hours": 0, "minutes": 30, "seconds": 0}
 DEFAULT_QUIET_START: Final = "22:00:00"
 DEFAULT_QUIET_END: Final = "07:00:00"
 DEFAULT_AWAY_TEMPERATURE: Final = 17.0

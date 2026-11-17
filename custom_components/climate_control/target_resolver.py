@@ -62,8 +62,8 @@ class OverrideExpiryPolicy(StrEnum):
 
 
 @dataclass(frozen=True, kw_only=True)
-class OverrideExpiry:
-    """Override expiry rule of a room."""
+class OverrideExpiryRule:
+    """How a room finds its override expiry: the policy and the duration it uses."""
 
     policy: OverrideExpiryPolicy
     duration: timedelta
@@ -102,8 +102,8 @@ class ScheduleLevel:
 class RoomSnapshot:
     """Everything the target resolver needs to decide for one room.
 
-    `room_mode` heat carries `override_temperature`; heat and off end at
-    `mode_expires_at` (None: no expiry). `away`, `house_mode` and `vacation_end`
+    `room_mode` heat carries `override_temperature`; heat and off end at the
+    `override_expiry` (None: no expiry). `away`, `house_mode` and `vacation_end`
     are the same for all rooms; ending the vacation is up to the caller.
     `window_open_since` is set while the window is open.
     """
@@ -116,7 +116,7 @@ class RoomSnapshot:
     vacation_temperature: float
     room_mode: RoomMode = RoomMode.AUTO
     override_temperature: float | None = None
-    mode_expires_at: datetime | None = None
+    override_expiry: datetime | None = None
     away: bool = False
     house_mode: HouseMode = HouseMode.AUTO
     vacation_end: datetime | None = None
@@ -141,40 +141,38 @@ class Decision:
     trv_mode: TrvMode
     reason: Reason
     reevaluate_at: datetime | None
-    mode_expires_at: datetime | None = None
+    override_expiry: datetime | None = None
 
 
-def mode_expires_at(
+def override_expiry_for(
     room_mode: RoomMode,
     *,
     now: datetime,
     next_block_boundary: datetime | None,
-    override_expiry: OverrideExpiry,
+    rule: OverrideExpiryRule,
 ) -> datetime | None:
-    """Return when a room mode chosen at `now` returns to auto (None: never).
+    """Return the override expiry of a room mode chosen at `now` (None: never).
 
     Off always returns at the next block boundary; heat follows the override
     expiry rule.
     """
     if room_mode is RoomMode.AUTO:
         return None
-    if room_mode is RoomMode.OFF or override_expiry.policy is (
-        OverrideExpiryPolicy.NEXT_BLOCK
-    ):
+    if room_mode is RoomMode.OFF or rule.policy is OverrideExpiryPolicy.NEXT_BLOCK:
         return next_block_boundary
-    after_duration = now + override_expiry.duration
-    if override_expiry.policy is OverrideExpiryPolicy.DURATION:
+    after_duration = now + rule.duration
+    if rule.policy is OverrideExpiryPolicy.DURATION:
         return after_duration
     return _earliest(next_block_boundary, after_duration)
 
 
 def heat_temperature(snapshot: RoomSnapshot) -> float:
-    """Return the temperature heat without a temperature overrides with.
+    """Return the override temperature when heat is chosen without a temperature.
 
-    That is the current target; instead of frost protection from a room or a
-    house switched off it is what auto would heat to without them, so heat never
-    holds frost protection. An open window is left out: heat gets the target the
-    room has once the window is closed.
+    Usually that is the current target. While the room or the house is off, it is
+    what auto would heat to instead, so heat never holds frost protection. An open
+    window is ignored: heat gets the target the room will have once the window is
+    closed.
     """
     closed = replace(snapshot, window_open_since=None)
     decision = resolve(closed)
@@ -185,7 +183,7 @@ def heat_temperature(snapshot: RoomSnapshot) -> float:
             closed,
             room_mode=RoomMode.AUTO,
             override_temperature=None,
-            mode_expires_at=None,
+            override_expiry=None,
             house_mode=(
                 HouseMode.AUTO
                 if closed.house_mode is HouseMode.OFF
@@ -202,15 +200,15 @@ def resolve(snapshot: RoomSnapshot) -> Decision:
     returns to the room mode, unless it expired meanwhile.
     """
     room_mode = snapshot.room_mode
-    expires_at = snapshot.mode_expires_at
-    if expires_at is not None and snapshot.now >= expires_at:
+    expiry = snapshot.override_expiry
+    if expiry is not None and snapshot.now >= expiry:
         room_mode = RoomMode.AUTO
-        expires_at = None
+        expiry = None
     situation = _Situation(
         snapshot=snapshot,
         room_mode=room_mode,
-        mode_expires_at=expires_at,
-        reevaluate_at=_earliest(snapshot.schedule.next_block_boundary, expires_at),
+        override_expiry=expiry,
+        reevaluate_at=_earliest(snapshot.schedule.next_block_boundary, expiry),
     )
     for rule in _RULES:
         if (decision := rule(situation)) is not None:
@@ -224,7 +222,7 @@ class _Situation:
 
     snapshot: RoomSnapshot
     room_mode: RoomMode
-    mode_expires_at: datetime | None
+    override_expiry: datetime | None
     reevaluate_at: datetime | None
 
 
@@ -242,7 +240,7 @@ def _window_open(situation: _Situation) -> Decision | None:
             params={"since": snapshot.window_open_since},
         ),
         reevaluate_at=situation.reevaluate_at,
-        mode_expires_at=situation.mode_expires_at,
+        override_expiry=situation.override_expiry,
     )
 
 
@@ -255,10 +253,10 @@ def _room_off(situation: _Situation) -> Decision | None:
         level=Level.FROST,
         trv_mode=TrvMode.OFF,
         reason=Reason(
-            code=ReasonCode.ROOM_OFF, params={"until": situation.mode_expires_at}
+            code=ReasonCode.ROOM_OFF, params={"until": situation.override_expiry}
         ),
         reevaluate_at=situation.reevaluate_at,
-        mode_expires_at=situation.mode_expires_at,
+        override_expiry=situation.override_expiry,
     )
 
 
@@ -272,10 +270,10 @@ def _override(situation: _Situation) -> Decision | None:
         level=None,
         trv_mode=TrvMode.HEAT,
         reason=Reason(
-            code=ReasonCode.OVERRIDE, params={"until": situation.mode_expires_at}
+            code=ReasonCode.OVERRIDE, params={"until": situation.override_expiry}
         ),
         reevaluate_at=situation.reevaluate_at,
-        mode_expires_at=situation.mode_expires_at,
+        override_expiry=situation.override_expiry,
     )
 
 

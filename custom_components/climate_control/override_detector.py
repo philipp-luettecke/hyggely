@@ -1,11 +1,14 @@
 """Override detector: tells echoes and external changes of TRVs apart.
 
-Measured in ticket 01: an own command shows in the TRV state at once and has no
-later echoes; a knob turn arrives with the next minute poll, with only its end
-value. So every reported setting that differs from the target of the room is an
-external change, without debouncing or echo windows. One case is unclear: if the
-first poll after a command shows exactly the setting from before the command,
-the TRV did not take it, and the command is sent once more.
+Measured at the tado hardware: an own command shows in the TRV state at once and
+has no later echoes; a knob turn arrives with the next minute poll, with only its
+end value. So every reported setting that differs from the target of the room and
+from the setting the TRV showed before is an external change, without debouncing
+or echo windows. A report that keeps the setting, e.g. with a new current
+temperature, changes nothing: a TRV waiting for its paced command or keeping a
+command it did not take still shows its old setting. One case is unclear: if the
+first poll after a command shows exactly the setting from before the command, the
+TRV did not take it, and the command is sent once more.
 """
 
 from __future__ import annotations
@@ -17,7 +20,7 @@ from enum import StrEnum
 from .target_resolver import TrvMode
 
 FIRST_POLL_WITHIN = timedelta(seconds=62)
-"""Home Assistant polls a TRV once a minute; measured up to 61 s (ticket 01)."""
+"""Home Assistant polls a TRV once a minute; measured up to 61 s."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -33,6 +36,8 @@ class Classification(StrEnum):
 
     MATCHES = "matches"
     """The TRV has the target of the room: an echo or nothing new."""
+    UNCHANGED = "unchanged"
+    """The TRV still shows the setting it had before: nothing new."""
     EXTERNAL_CHANGE = "external_change"
     """Someone changed the TRV, e.g. at the knob; becomes an override."""
     NOT_TAKEN = "not_taken"
@@ -67,11 +72,19 @@ class OverrideDetector:
         self._commands[trv] = _Command(before=before, sent_at=now, repeated=repeated)
 
     def classify(
-        self, trv: str, reported: TrvSetting, *, target: TrvSetting, now: datetime
+        self,
+        trv: str,
+        reported: TrvSetting,
+        *,
+        previous: TrvSetting | None,
+        target: TrvSetting,
+        now: datetime,
     ) -> Classification:
-        """Classify the setting `trv` reports against the target of the room."""
+        """Classify the setting `trv` reports after `previous` against the target."""
         if reported == target:
             return Classification.MATCHES
+        if reported == previous:
+            return Classification.UNCHANGED
         command = self._commands.pop(trv, None)
         if (
             command is not None

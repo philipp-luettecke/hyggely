@@ -53,7 +53,6 @@ from .const import (
     CONF_VACATION_TEMPERATURE,
     CONF_WINDOW_CONTACTS,
     CONF_WINDOW_DELAY,
-    DATA_TARGETS_BEFORE_RELOAD,
     DEFAULT_LEAD_TIME,
     DEFAULT_NIGHT_TEMPERATURE,
     DOMAIN,
@@ -69,15 +68,15 @@ from .schedule_reader import ScheduleReader
 from .target_resolver import (
     Decision,
     Level,
-    OverrideExpiry,
     OverrideExpiryPolicy,
+    OverrideExpiryRule,
     Reason,
     RoomMode,
     RoomSnapshot,
     ScheduleLevel,
     TrvMode,
     heat_temperature,
-    mode_expires_at,
+    override_expiry_for,
     resolve,
 )
 from .trv_reachability import TrvReachability
@@ -86,7 +85,9 @@ from .window import WindowContacts
 RECENT_DECISIONS = 20
 
 
-def _override_expiry(entry: ConfigEntry, subentry: ConfigSubentry) -> OverrideExpiry:
+def _override_expiry_rule(
+    entry: ConfigEntry, subentry: ConfigSubentry
+) -> OverrideExpiryRule:
     """Return the override expiry rule of a room; room settings beat global ones."""
     policy = subentry.data.get(CONF_OVERRIDE_EXPIRY_POLICY, OVERRIDE_EXPIRY_GLOBAL)
     if policy == OVERRIDE_EXPIRY_GLOBAL:
@@ -94,7 +95,7 @@ def _override_expiry(entry: ConfigEntry, subentry: ConfigSubentry) -> OverrideEx
     duration = subentry.data.get(
         CONF_OVERRIDE_EXPIRY_DURATION, entry.options[CONF_OVERRIDE_EXPIRY_DURATION]
     )
-    return OverrideExpiry(
+    return OverrideExpiryRule(
         policy=OverrideExpiryPolicy(policy), duration=timedelta(**duration)
     )
 
@@ -109,8 +110,8 @@ def _target_setting(decision: Decision) -> TrvSetting:
 def _reported_setting(state: State | None) -> TrvSetting | None:
     """Return the setting a TRV state shows; None for an invalid one.
 
-    An off tado TRV reports no temperature and the 7-35 range (ticket 01); off
-    compares by mode only.
+    An off tado TRV reports no temperature and the 7-35 range; off compares by
+    mode only.
     """
     if state is None:
         return None
@@ -127,7 +128,7 @@ class RoomController:
 
     Commands go out only when a TRV deviates from the decision; for `heat` the
     mode always travels with the temperature because an off tado TRV silently
-    ignores a temperature alone (ticket 01). Unreachable TRVs and TRVs reporting
+    ignores a temperature alone. Unreachable TRVs and TRVs reporting
     an invalid mode get nothing; once they take commands again they get the
     current target again, deviating or not. These resends and the first commands
     while Home Assistant starts go through the command pacer, one after another.
@@ -150,7 +151,8 @@ class RoomController:
     ) -> None:
         """Create the controller for the room `subentry` of the main entry.
 
-        The room continues with the room mode saved in `room_modes`.
+        The room continues with the room mode saved in `room_modes`; a target
+        differing from the saved one is logged as a change.
         """
         self._hass = hass
         self._entry = entry
@@ -176,7 +178,7 @@ class RoomController:
         self._frost_temperature = float(entry.options[CONF_FROST_TEMPERATURE])
         self._away_temperature = float(entry.options[CONF_AWAY_TEMPERATURE])
         self._vacation_temperature = float(entry.options[CONF_VACATION_TEMPERATURE])
-        self._override_expiry = _override_expiry(entry, subentry)
+        self._override_expiry_rule = _override_expiry_rule(entry, subentry)
         self._window = WindowContacts(
             hass,
             subentry.data.get(CONF_WINDOW_CONTACTS, []),
@@ -189,9 +191,6 @@ class RoomController:
         self._recent_decisions: deque[tuple[datetime, Decision]] = deque(
             maxlen=RECENT_DECISIONS
         )
-        self._target_before_reload = hass.data.get(DATA_TARGETS_BEFORE_RELOAD, {}).pop(
-            self.room_id, None
-        )
         self._listeners: list[Callable[[], None]] = []
         self._unsubscribers: list[CALLBACK_TYPE] = []
         self._cancel_reevaluation: CALLBACK_TYPE | None = None
@@ -201,7 +200,7 @@ class RoomController:
         self._reachability = TrvReachability(
             hass,
             self._trvs,
-            on_back=self._trv_back,
+            on_reachable_again=self._trv_reachable_again,
             on_report=self._trv_reported,
             on_offline_changed=self._notify_listeners,
         )
@@ -227,9 +226,9 @@ class RoomController:
         return self._next_block_boundary
 
     @property
-    def mode_expires_at(self) -> datetime | None:
-        """Return when the room returns to auto (override expiry)."""
-        return self._decision.mode_expires_at if self._decision else None
+    def override_expiry(self) -> datetime | None:
+        """Return when the room returns to auto."""
+        return self._decision.override_expiry if self._decision else None
 
     @property
     def reason(self) -> Reason | None:
@@ -251,7 +250,7 @@ class RoomController:
         """Return the mean current temperature of the TRVs taking commands.
 
         The others show frozen values: on a bridge outage and until fresh values
-        arrive after it (ticket 01).
+        arrive after it.
         """
         temperatures = [
             float(value)
@@ -268,6 +267,16 @@ class RoomController:
     def window_open_since(self) -> datetime | None:
         """Return since when the window of the room is open; None while closed."""
         return self._window.open_since
+
+    @property
+    def window_contact_open(self) -> bool:
+        """Return whether a window contact of the room is open, for however long."""
+        return self._window.contact_open
+
+    @property
+    def unreachable_trvs(self) -> frozenset[str]:
+        """Return the unreachable TRVs of the room, for however long."""
+        return self._reachability.unreachable
 
     @property
     def offline_trvs(self) -> frozenset[str]:
@@ -333,25 +342,21 @@ class RoomController:
         self._choice = RoomModeChoice(
             room_mode=room_mode,
             override_temperature=temperature,
-            expires_at=mode_expires_at(
+            override_expiry=override_expiry_for(
                 room_mode,
                 now=dt_util.utcnow(),
                 next_block_boundary=schedule.next_block_boundary if schedule else None,
-                override_expiry=self._override_expiry,
+                rule=self._override_expiry_rule,
             ),
         )
         await self._room_modes.async_save(self.room_id, self._choice)
 
     @callback
     def async_stop(self) -> None:
-        """Unsubscribe all inputs and timers; a reload compares against the target."""
+        """Unsubscribe all inputs and timers."""
         while self._unsubscribers:
             self._unsubscribers.pop()()
         self._cancel_pending_reevaluation()
-        if self.target_temperature is not None:
-            self._hass.data.setdefault(DATA_TARGETS_BEFORE_RELOAD, {})[self.room_id] = (
-                self.target_temperature
-            )
 
     @callback
     def _async_request_evaluation(self) -> None:
@@ -383,14 +388,18 @@ class RoomController:
         self._notify_listeners()
 
     @callback
-    def _trv_reported(self, trv: str) -> None:
+    def _trv_reported(self, trv: str, previous: State | None) -> None:
         """Turn an external change at `trv`, e.g. a knob turn, into a room mode."""
         decision = self._decision
         reported = _reported_setting(self._hass.states.get(trv))
         if decision is None or reported is None:
             return
         classification = self._detector.classify(
-            trv, reported, target=_target_setting(decision), now=dt_util.utcnow()
+            trv,
+            reported,
+            previous=_reported_setting(previous),
+            target=_target_setting(decision),
+            now=dt_util.utcnow(),
         )
         # Not eager: a command sent while the report is still being written would
         # be overwritten by the reported state.
@@ -424,7 +433,7 @@ class RoomController:
                 await self._async_command(trv, decision, repeated=True)
 
     @callback
-    def _trv_back(self, trv: str) -> None:
+    def _trv_reachable_again(self, trv: str) -> None:
         self._pacer.async_enqueue(
             f"resend to {trv}", partial(self._async_catch_up, trv, resend=True)
         )
@@ -469,13 +478,13 @@ class RoomController:
                 and self._choice.room_mode is not RoomMode.AUTO
             ):
                 await self._async_choose(RoomMode.AUTO, None)
-            previous_target = (
-                self._decision.target_temperature
-                if self._decision
-                else self._target_before_reload
-            )
-            if previous_target not in (None, decision.target_temperature):
-                self._announce_target_change(decision, now)
+            previous_target = self._room_modes.target(self.room_id)
+            if previous_target != decision.target_temperature:
+                if previous_target is not None:
+                    self._announce_target_change(decision, now)
+                await self._room_modes.async_save_target(
+                    self.room_id, decision.target_temperature
+                )
             self._decision = decision
             self._notify_listeners()
             if decision.reevaluate_at is not None and decision.reevaluate_at > now:
@@ -504,7 +513,7 @@ class RoomController:
             vacation_temperature=self._vacation_temperature,
             room_mode=self._choice.room_mode,
             override_temperature=self._choice.override_temperature,
-            mode_expires_at=self._choice.expires_at,
+            override_expiry=self._choice.override_expiry,
             away=self._presence.away,
             house_mode=self._house_mode.house_mode,
             vacation_end=self._house_mode.vacation_end,

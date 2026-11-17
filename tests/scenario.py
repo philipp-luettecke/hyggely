@@ -117,9 +117,14 @@ async def add_main_entry(hass: HomeAssistant, **settings: Any) -> ConfigEntry:
 
 
 async def shut_down(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Stop the integration as Home Assistant does when it shuts down."""
+    """Stop the integration as Home Assistant does when it shuts down.
+
+    Only what the integration stored survives; its memory is gone.
+    """
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
+    for key in [key for key in hass.data if str(key).startswith(DOMAIN)]:
+        del hass.data[key]
 
 
 async def start_up(hass: HomeAssistant, entry: ConfigEntry) -> None:

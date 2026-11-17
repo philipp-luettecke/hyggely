@@ -1,4 +1,4 @@
-"""Self-test of the simulated TRV test helper (behaviour measured in ticket 01)."""
+"""Self-test of the simulated TRV test helper against the measured tado behaviour."""
 
 from homeassistant.core import (
     Event,
@@ -84,7 +84,7 @@ def _trv_changes(hass: HomeAssistant, entity_id: str) -> list[State]:
 async def test_knob_turns_arrive_at_the_next_poll_with_only_the_end_value(
     hass: HomeAssistant, simulated_trvs: SimulatedTrvs, clock: Clock
 ) -> None:
-    """Measured in ticket 01: four quick turns give one change at the full minute."""
+    """Four quick turns give one change at the full minute."""
     clock.set("2026-11-16 12:42:10")
     trv = await simulated_trvs.add("office", target_temperature=23.0)
     changes = _trv_changes(hass, trv.entity_id)
@@ -147,7 +147,7 @@ async def test_command_not_taken_shows_at_once_and_reverts_at_the_next_poll(
 async def test_off_trv_ignores_a_temperature_without_mode(
     hass: HomeAssistant, simulated_trvs: SimulatedTrvs, clock: Clock
 ) -> None:
-    """Measured in ticket 01: the call is accepted, the TRV stays off."""
+    """The call is accepted, the TRV stays off."""
     clock.set("2026-11-16 12:00:30")
     trv = await simulated_trvs.add("office", hvac_mode="off")
 
@@ -239,7 +239,7 @@ def _state(hass: HomeAssistant, entity_id: str) -> str:
 async def test_bridge_outage_follows_the_measurement(
     hass: HomeAssistant, simulated_trvs: SimulatedTrvs, clock: Clock
 ) -> None:
-    """Measured in ticket 01: the climate entity freezes, the sensor goes away.
+    """The climate entity freezes, the sensor goes away.
 
     Unplugged 13:52:25, sensor unavailable at the second poll (13:54), plugged in
     13:53:32, sensor back with an invalid mode at the second poll (13:55), fresh

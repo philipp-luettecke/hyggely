@@ -6,7 +6,7 @@
         "description": "Global settings that apply to all rooms. You can change them later in the options.",
         "data": {
           "persons": "Persons",
-          "away_delay": "Away delay",
+          "presence_delay": "Presence delay",
           "notify_targets": "Notification recipients",
           "quiet_start": "Quiet time start",
           "quiet_end": "Quiet time end",
@@ -19,7 +19,7 @@
         },
         "data_description": {
           "persons": "The house is away when all of these persons are not home.",
-          "away_delay": "How long all persons must be away before the house lowers the temperature.",
+          "presence_delay": "How long all persons must be away before the house lowers the temperature.",
           "notify_targets": "Notification entities that receive messages, e.g. your phones.",
           "quiet_start": "No notifications are sent from this time on.",
           "quiet_end": "Held back notifications that still apply are sent at this time.",
@@ -43,7 +43,7 @@
         "description": "Global settings that apply to all rooms.",
         "data": {
           "persons": "Persons",
-          "away_delay": "Away delay",
+          "presence_delay": "Presence delay",
           "notify_targets": "Notification recipients",
           "quiet_start": "Quiet time start",
           "quiet_end": "Quiet time end",
@@ -56,7 +56,7 @@
         },
         "data_description": {
           "persons": "The house is away when all of these persons are not home.",
-          "away_delay": "How long all persons must be away before the house lowers the temperature.",
+          "presence_delay": "How long all persons must be away before the house lowers the temperature.",
           "notify_targets": "Notification entities that receive messages, e.g. your phones.",
           "quiet_start": "No notifications are sent from this time on.",
           "quiet_end": "Held back notifications that still apply are sent at this time.",

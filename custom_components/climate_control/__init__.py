@@ -11,9 +11,15 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 
 from .command_pacer import CommandPacer
-from .const import CONF_AREA, CONF_AWAY_DELAY, CONF_PERSONS, DOMAIN, SUBENTRY_TYPE_ROOM
+from .const import (
+    CONF_AREA,
+    CONF_PERSONS,
+    CONF_PRESENCE_DELAY,
+    DOMAIN,
+    SUBENTRY_TYPE_ROOM,
+)
 from .house_mode import HouseModeController, async_remove_house_mode
-from .notifier import Notifier
+from .notifier import Notifier, async_remove_sent_alerts
 from .presence import Presence
 from .repair_issues import async_track_offline_trvs
 from .room_controller import RoomController
@@ -48,7 +54,7 @@ async def async_setup_entry(
     presence = Presence(
         hass,
         entry.options[CONF_PERSONS],
-        timedelta(**entry.options[CONF_AWAY_DELAY]),
+        timedelta(**entry.options[CONF_PRESENCE_DELAY]),
     )
     pacer = CommandPacer(hass, entry)
     house_mode = HouseModeController(hass, entry)
@@ -85,7 +91,7 @@ async def async_setup_entry(
 
     notifier = Notifier(hass, entry, entry.runtime_data.rooms)
     entry.async_on_unload(notifier.async_stop)
-    notifier.async_start()
+    await notifier.async_start()
 
     entry.async_on_unload(entry.add_update_listener(_async_reload))
 
@@ -98,9 +104,10 @@ async def async_unload_entry(
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Forget the room modes and the house mode of the removed main entry."""
+    """Forget room modes, house mode and sent alerts of the removed main entry."""
     await async_remove_room_modes(hass, entry.entry_id)
     await async_remove_house_mode(hass, entry.entry_id)
+    await async_remove_sent_alerts(hass, entry.entry_id)
 
 
 async def _async_reload(hass: HomeAssistant, entry: ConfigEntry) -> None:

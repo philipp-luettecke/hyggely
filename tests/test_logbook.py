@@ -18,6 +18,8 @@ from tests.scenario import (
     block,
     change_room,
     living_room,
+    shut_down,
+    start_up,
 )
 from tests.simulated_trv import SimulatedTrvs
 
@@ -106,6 +108,44 @@ async def test_unchanged_target_logs_nothing(
         blocking=True,
     )
     await hass.async_block_till_done()
+
+    assert await _target_entries(hass, logbook, room) == []
+
+
+async def test_target_changed_during_a_restart_is_logged_once_after_start(
+    logbook: MockHAClientWebSocket,
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+) -> None:
+    """Home Assistant was down from 06:30 to 07:30 and missed the 07:00 block start."""
+    clock.set("2026-11-16 06:00")
+    room = await living_room(hass, schedules, simulated_trvs)
+    await shut_down(hass, room.entry)
+    await clock.advance_to("2026-11-16 07:30:00")
+
+    await start_up(hass, room.entry)
+
+    assert await _target_entries(hass, logbook, room) == [
+        ("Wohnzimmer", "21 °C (Komfort bis 09:00)"),
+    ]
+
+
+async def test_target_unchanged_during_a_restart_logs_nothing(
+    logbook: MockHAClientWebSocket,
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+) -> None:
+    """Down from 07:30 to 08:00 within the comfort block: nothing to log."""
+    clock.set("2026-11-16 07:30")
+    room = await living_room(hass, schedules, simulated_trvs)
+    await shut_down(hass, room.entry)
+    await clock.advance_to("2026-11-16 08:00:00")
+
+    await start_up(hass, room.entry)
 
     assert await _target_entries(hass, logbook, room) == []
 

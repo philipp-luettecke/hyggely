@@ -19,6 +19,7 @@ from tests.scenario import (
 from tests.simulated_trv import SimulatedTrvs
 
 HEAT_23 = ("set_temperature", {"temperature": 23.0, "hvac_mode": "heat"})
+TRV_OFF = ("set_hvac_mode", {"hvac_mode": "off"})
 
 
 async def test_new_temperature_overrides_until_the_earlier_next_block_boundary(
@@ -43,6 +44,60 @@ async def test_new_temperature_overrides_until_the_earlier_next_block_boundary(
     assert room.state(hass).state == "auto"
     assert room.state(hass).attributes["temperature"] == 17.0
     assert commands(room.trv) == [HEAT_21, HEAT_23, HEAT_17]
+
+
+async def test_new_temperature_with_heat_overrides(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+) -> None:
+    """An automation sets 23 °C together with heat: heat until 09:00."""
+    clock.set("2026-11-16 08:00")
+    room = await living_room(hass, schedules, simulated_trvs)
+
+    await room.call(hass, "set_temperature", temperature=23, hvac_mode="heat")
+
+    assert room.state(hass).state == "heat"
+    assert room.state(hass).attributes["temperature"] == 23.0
+    assert commands(room.trv) == [HEAT_21, HEAT_23]
+
+
+async def test_new_temperature_with_off_switches_the_room_off(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+) -> None:
+    """A temperature sent together with off means off until the next block boundary."""
+    clock.set("2026-11-16 08:00")
+    room = await living_room(hass, schedules, simulated_trvs)
+
+    await room.call(hass, "set_temperature", temperature=23, hvac_mode="off")
+
+    assert room.state(hass).state == "off"
+    assert room.state(hass).attributes["temperature"] == 7.0
+    assert room.state(hass).attributes["override_expiry"] == local("2026-11-16 09:00")
+    assert commands(room.trv) == [HEAT_21, TRV_OFF]
+
+
+async def test_new_temperature_with_auto_returns_to_the_schedule(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+) -> None:
+    """During an override at 23 °C, a temperature sent with auto ends it at once."""
+    clock.set("2026-11-16 08:00")
+    room = await living_room(hass, schedules, simulated_trvs)
+    await room.call(hass, "set_temperature", temperature=23)
+
+    await room.call(hass, "set_temperature", temperature=19, hvac_mode="auto")
+
+    assert room.state(hass).state == "auto"
+    assert room.state(hass).attributes["temperature"] == 21.0
+    assert room.state(hass).attributes["override_expiry"] is None
+    assert commands(room.trv) == [HEAT_21, HEAT_23, HEAT_21]
 
 
 async def test_override_falls_back_after_the_duration_when_that_comes_first(
