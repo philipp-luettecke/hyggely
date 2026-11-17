@@ -5,7 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
+from homeassistant.core import CoreState, HomeAssistant
 from homeassistant.helpers import area_registry as ar
 
 from tests.scenario import (
@@ -17,6 +18,8 @@ from tests.scenario import (
     block,
     change_global_settings,
     duration,
+    shut_down,
+    start_up,
 )
 from tests.simulated_phone import Message, SimulatedPhone, SimulatedPhones
 from tests.simulated_trv import SimulatedTrv, SimulatedTrvs
@@ -429,6 +432,114 @@ async def test_changing_the_global_settings_does_not_repeat_a_sent_message(
         await clock.advance_to(f"2026-11-16 {moment}:00")
 
     assert len(house.anna.messages) == 1
+
+
+async def test_open_window_reported_before_a_restart_is_not_reported_again(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+    phones: SimulatedPhones,
+) -> None:
+    """Reported at 12:21; after the restart at 12:30 the contact reports open anew."""
+    clock.set("2026-11-16 12:00")
+    house = await _house(hass, schedules, simulated_trvs, phones)
+    window = house.windows["Wohnzimmer"]
+    await window.open()
+    for moment in ("12:01", "12:20", "12:21"):
+        await clock.advance_to(f"2026-11-16 {moment}:00")
+
+    await shut_down(hass, house.entry)
+    await clock.advance_to("2026-11-16 12:30:00")
+    await window.report("unavailable")
+    await window.open()
+    await start_up(hass, house.entry)
+    for moment in ("12:31", "12:50", "12:51", "13:00"):
+        await clock.advance_to(f"2026-11-16 {moment}:00")
+
+    assert len(house.anna.messages) == 1
+
+
+async def test_offline_trv_reported_before_a_restart_is_not_reported_again(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+    phones: SimulatedPhones,
+) -> None:
+    """Reported at 12:31; after the restart at 12:40 it is unreachable anew."""
+    clock.set("2026-11-16 12:00")
+    house = await _house(hass, schedules, simulated_trvs, phones)
+    trv = house.trvs["Wohnzimmer"]
+    trv.set_available(False)
+    await clock.advance_to("2026-11-16 12:30:00")
+    await clock.advance_to("2026-11-16 12:31:00")
+
+    await shut_down(hass, house.entry)
+    await clock.advance_to("2026-11-16 12:40:00")
+    trv.set_available(True)
+    trv.set_available(False)
+    await start_up(hass, house.entry)
+    for moment in ("12:41", "13:10", "13:11", "14:00"):
+        await clock.advance_to(f"2026-11-16 {moment}:00")
+
+    assert len(house.anna.messages) == 1
+
+
+async def test_window_contact_appearing_while_home_assistant_starts_is_no_new_alert(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+    phones: SimulatedPhones,
+) -> None:
+    """The contact of the reported window only shows up after the integration."""
+    clock.set("2026-11-16 12:00")
+    house = await _house(hass, schedules, simulated_trvs, phones)
+    window = house.windows["Wohnzimmer"]
+    await window.open()
+    for moment in ("12:01", "12:20", "12:21"):
+        await clock.advance_to(f"2026-11-16 {moment}:00")
+
+    await shut_down(hass, house.entry)
+    hass.states.async_remove(window.entity_id)
+    await clock.advance_to("2026-11-16 12:30:00")
+    hass.set_state(CoreState.starting)
+    await start_up(hass, house.entry)
+    await window.open()
+    hass.set_state(CoreState.running)
+    hass.bus.async_fire(EVENT_HOMEASSISTANT_STARTED)
+    for moment in ("12:31", "12:50", "12:51", "13:00"):
+        await clock.advance_to(f"2026-11-16 {moment}:00")
+
+    assert len(house.anna.messages) == 1
+
+
+async def test_window_closed_during_a_restart_is_reported_when_open_again(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+    phones: SimulatedPhones,
+) -> None:
+    """Closed while Home Assistant was down, open again from 12:40: reported."""
+    clock.set("2026-11-16 12:00")
+    house = await _house(hass, schedules, simulated_trvs, phones)
+    window = house.windows["Wohnzimmer"]
+    await window.open()
+    for moment in ("12:01", "12:20", "12:21"):
+        await clock.advance_to(f"2026-11-16 {moment}:00")
+
+    await shut_down(hass, house.entry)
+    await window.close()
+    await clock.advance_to("2026-11-16 12:30:00")
+    await start_up(hass, house.entry)
+    await clock.advance_to("2026-11-16 12:40:00")
+    await window.open()
+    for moment in ("12:41", "13:00", "13:01"):
+        await clock.advance_to(f"2026-11-16 {moment}:00")
+
+    assert len(house.anna.messages) == 2
 
 
 async def test_changing_the_recipients_sends_to_the_new_ones(

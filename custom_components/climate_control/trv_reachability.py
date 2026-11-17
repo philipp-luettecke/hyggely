@@ -36,8 +36,8 @@ class TrvReachability:
     reachable and reports a valid mode. A TRV that could not take commands is
     handed to `on_back` as soon as it can again. A new state of a TRV that took
     commands before and still does goes to `on_report`, with the state before;
-    frozen values and the return from an outage never do. A TRV unreachable for longer than
-    `OFFLINE_AFTER` is offline; `on_offline_changed` reports changes.
+    frozen values and the return from an outage never do. A TRV unreachable for
+    longer than `OFFLINE_AFTER` is offline; `on_offline_changed` reports changes.
     """
 
     def __init__(
@@ -66,6 +66,13 @@ class TrvReachability:
     def entities(self) -> list[str]:
         """Return the climate entities of the TRVs and the sensors on their devices."""
         return list(self._trv_of)
+
+    @property
+    def unreachable(self) -> frozenset[str]:
+        """Return the TRVs whose climate entity or temperature sensor is unavailable."""
+        return frozenset(
+            trv for trv in self._sensors if self._unreachable_since(trv) is not None
+        )
 
     @property
     def offline(self) -> frozenset[str]:

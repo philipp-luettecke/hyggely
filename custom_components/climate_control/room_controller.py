@@ -270,6 +270,16 @@ class RoomController:
         return self._window.open_since
 
     @property
+    def window_contact_open(self) -> bool:
+        """Return whether a window contact of the room is open, for however long."""
+        return self._window.contact_open
+
+    @property
+    def unreachable_trvs(self) -> frozenset[str]:
+        """Return the unreachable TRVs of the room, for however long."""
+        return self._reachability.unreachable
+
+    @property
     def offline_trvs(self) -> frozenset[str]:
         """Return the TRVs of the room unreachable for longer than 30 minutes."""
         return self._reachability.offline
