@@ -75,7 +75,9 @@ from .target_resolver import (
     Reason,
     RoomMode,
     RoomSnapshot,
+    ScheduleLevel,
     TrvMode,
+    heat_temperature,
     mode_expires_at,
     resolve,
 )
@@ -277,11 +279,20 @@ class RoomController:
         await self._async_evaluate()
 
     async def async_set_room_mode(self, room_mode: RoomMode) -> None:
-        """Switch the room mode; heat keeps the current target."""
+        """Switch the room mode, on the room entity or at a TRV.
+
+        Heat keeps the current target (a room switched off heats to what auto
+        would); off lasts until the next block boundary, whatever the override
+        expiry rule says.
+        """
         if room_mode is RoomMode.HEAT:
-            if self.target_temperature is None:
+            schedule = self._schedule.read()
+            if schedule is None:
                 return
-            await self._async_choose(RoomMode.HEAT, self.target_temperature)
+            temperature = heat_temperature(
+                self._snapshot_at(dt_util.utcnow(), schedule)
+            )
+            await self._async_choose(RoomMode.HEAT, temperature)
         else:
             await self._async_choose(room_mode, None)
         await self._async_evaluate()
@@ -401,17 +412,7 @@ class RoomController:
                 return
             self._next_block_boundary = schedule.next_block_boundary
             now = dt_util.utcnow()
-            snapshot = RoomSnapshot(
-                now=now,
-                schedule=schedule,
-                level_temperatures=self._level_temperatures,
-                frost_temperature=self._frost_temperature,
-                away_temperature=self._away_temperature,
-                room_mode=self._choice.room_mode,
-                override_temperature=self._choice.override_temperature,
-                mode_expires_at=self._choice.expires_at,
-                away=self._presence.away,
-            )
+            snapshot = self._snapshot_at(now, schedule)
             decision = resolve(snapshot)
             self._snapshot = snapshot
             if not self._recent_decisions or self._recent_decisions[-1][1] != decision:
@@ -444,6 +445,20 @@ class RoomController:
                     )
                 else:
                     await self._async_command(trv, decision)
+
+    @callback
+    def _snapshot_at(self, now: datetime, schedule: ScheduleLevel) -> RoomSnapshot:
+        return RoomSnapshot(
+            now=now,
+            schedule=schedule,
+            level_temperatures=self._level_temperatures,
+            frost_temperature=self._frost_temperature,
+            away_temperature=self._away_temperature,
+            room_mode=self._choice.room_mode,
+            override_temperature=self._choice.override_temperature,
+            mode_expires_at=self._choice.expires_at,
+            away=self._presence.away,
+        )
 
     @callback
     def _announce_target_change(self, decision: Decision, now: datetime) -> None:
