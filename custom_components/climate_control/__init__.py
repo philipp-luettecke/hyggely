@@ -9,6 +9,7 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 
+from .command_pacer import CommandPacer
 from .const import CONF_AREA, DOMAIN, SUBENTRY_TYPE_ROOM
 from .repair_issues import async_track_offline_trvs
 from .room_controller import RoomController
@@ -20,6 +21,7 @@ PLATFORMS = [Platform.CLIMATE]
 class RuntimeData:
     """Live objects of the main entry."""
 
+    pacer: CommandPacer
     rooms: dict[str, RoomController] = field(default_factory=dict)
 
 
@@ -30,11 +32,12 @@ async def async_setup_entry(
     hass: HomeAssistant, entry: ClimateControlConfigEntry
 ) -> None:
     """Set up the main entry with one room controller per room."""
-    entry.runtime_data = RuntimeData()
+    entry.runtime_data = RuntimeData(pacer=CommandPacer(hass, entry))
+    entry.async_on_unload(entry.runtime_data.pacer.async_stop)
     for subentry in entry.get_subentries_of_type(SUBENTRY_TYPE_ROOM):
         _async_register_room_device(hass, entry, subentry)
         entry.runtime_data.rooms[subentry.subentry_id] = RoomController(
-            hass, entry, subentry
+            hass, entry, subentry, pacer=entry.runtime_data.pacer
         )
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)

@@ -26,7 +26,7 @@ async def test_trv_gets_no_command_while_its_bridge_is_out(
     schedules: Schedules,
     simulated_trvs: SimulatedTrvs,
 ) -> None:
-    """At the block boundary during the outage the room changes, the TRV gets nothing."""
+    """At a block boundary during the outage the room changes, the TRV gets nothing."""
     clock.set("2026-11-16 06:50")
     room = await living_room(hass, schedules, simulated_trvs, trv_temperature=17.0)
     assert commands(room.trv) == []
