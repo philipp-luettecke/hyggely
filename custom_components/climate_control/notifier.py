@@ -116,7 +116,9 @@ class Notifier:
         self._hass = hass
         self._entry = entry
         self._rooms = rooms
-        self._targets: list[str] = list(entry.options.get(CONF_NOTIFY_TARGETS, []))
+        self._notify_entities: list[str] = list(
+            entry.options.get(CONF_NOTIFY_TARGETS, [])
+        )
         self._quiet_time = _quiet_time(entry)
         self._store: Store[dict[str, Any]] = Store(
             hass, STORAGE_VERSION, _storage_key(entry.entry_id)
@@ -233,7 +235,7 @@ class Notifier:
 
     async def _async_send(self, alerts: set[Alert]) -> None:
         """Send one message about `alerts` in the language of Home Assistant."""
-        if not self._targets:
+        if not self._notify_entities:
             return
         texts = await async_get_translations(
             self._hass, self._hass.config.language, "common", [DOMAIN]
@@ -265,14 +267,16 @@ class Notifier:
                 NOTIFY_DOMAIN,
                 SERVICE_SEND_MESSAGE,
                 {
-                    ATTR_ENTITY_ID: self._targets,
+                    ATTR_ENTITY_ID: self._notify_entities,
                     ATTR_TITLE: texts[f"{_TEXTS}.notification_title"],
                     ATTR_MESSAGE: "\n".join(lines),
                 },
                 blocking=True,
             )
         except HomeAssistantError as err:
-            _LOGGER.warning("Could not notify %s: %s", ", ".join(self._targets), err)
+            _LOGGER.warning(
+                "Could not notify %s: %s", ", ".join(self._notify_entities), err
+            )
 
     def _name(self, entity_id: str) -> str:
         state = self._hass.states.get(entity_id)

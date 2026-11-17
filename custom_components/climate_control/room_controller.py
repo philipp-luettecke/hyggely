@@ -200,7 +200,7 @@ class RoomController:
         self._reachability = TrvReachability(
             hass,
             self._trvs,
-            on_back=self._trv_back,
+            on_reachable_again=self._trv_reachable_again,
             on_report=self._trv_reported,
             on_offline_changed=self._notify_listeners,
         )
@@ -433,7 +433,7 @@ class RoomController:
                 await self._async_command(trv, decision, repeated=True)
 
     @callback
-    def _trv_back(self, trv: str) -> None:
+    def _trv_reachable_again(self, trv: str) -> None:
         self._pacer.async_enqueue(
             f"resend to {trv}", partial(self._async_catch_up, trv, resend=True)
         )

@@ -167,12 +167,12 @@ def override_expiry_for(
 
 
 def heat_temperature(snapshot: RoomSnapshot) -> float:
-    """Return the temperature heat without a temperature overrides with.
+    """Return the override temperature when heat is chosen without a temperature.
 
-    That is the current target; instead of frost protection from a room or a
-    house switched off it is what auto would heat to without them, so heat never
-    holds frost protection. An open window is left out: heat gets the target the
-    room has once the window is closed.
+    Usually that is the current target. While the room or the house is off, it is
+    what auto would heat to instead, so heat never holds frost protection. An open
+    window is ignored: heat gets the target the room will have once the window is
+    closed.
     """
     closed = replace(snapshot, window_open_since=None)
     decision = resolve(closed)
