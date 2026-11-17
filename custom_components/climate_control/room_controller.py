@@ -44,6 +44,7 @@ from .schedule_reader import ScheduleReader
 from .target_resolver import (
     Decision,
     Level,
+    Reason,
     RoomMode,
     RoomSnapshot,
     TrvMode,
@@ -92,6 +93,11 @@ class RoomController:
     def target_temperature(self) -> float | None:
         """Return the target temperature of the room."""
         return self._decision.target_temperature if self._decision else None
+
+    @property
+    def reason(self) -> Reason | None:
+        """Return why the room has its target."""
+        return self._decision.reason if self._decision else None
 
     @property
     def current_temperature(self) -> float | None:

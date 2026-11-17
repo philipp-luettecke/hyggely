@@ -12,7 +12,7 @@ from homeassistant.helpers import device_registry as dr
 from .const import CONF_AREA, DOMAIN, SUBENTRY_TYPE_ROOM
 from .room_controller import RoomController
 
-PLATFORMS = [Platform.CLIMATE]
+PLATFORMS = [Platform.CLIMATE, Platform.SENSOR]
 
 
 @dataclass
