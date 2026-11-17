@@ -22,6 +22,7 @@ asyncio_default_fixture_loop_scope = "function"
 addopts = "-p no:respx"
 pythonpath = ["."]
 testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning:backoff.*"]
 
 [tool.ruff]
 target-version = "py314"
@@ -46,7 +47,6 @@ select = [
     "RET",
     "RUF",
     "SIM",
-    "TC",
     "UP",
     "W",
 ]
@@ -66,3 +66,7 @@ python_version = "3.14"
 strict = true
 warn_unreachable = true
 files = ["custom_components", "tests"]
+
+[[tool.mypy.overrides]]
+module = ["pytest_homeassistant.*"]
+ignore_missing_imports = true

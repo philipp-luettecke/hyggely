@@ -14,7 +14,7 @@ from homeassistant.config_entries import (
 from homeassistant.const import UnitOfTemperature
 from homeassistant.core import callback
 from homeassistant.helpers import selector
-import voluptuous as vol
+import probatio
 
 from .const import (
     CONF_AWAY_DELAY,
@@ -57,34 +57,34 @@ def _temperature_selector() -> selector.NumberSelector:
     )
 
 
-def _global_settings_schema() -> vol.Schema:
-    return vol.Schema(
+def _global_settings_schema() -> probatio.Schema:
+    return probatio.Schema(
         {
-            vol.Optional(CONF_PERSONS, default=[]): selector.EntitySelector(
+            probatio.Optional(CONF_PERSONS, default=[]): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="person", multiple=True)
             ),
-            vol.Required(
+            probatio.Required(
                 CONF_AWAY_DELAY, default=DEFAULT_AWAY_DELAY
             ): selector.DurationSelector(),
-            vol.Optional(CONF_NOTIFY_TARGETS, default=[]): selector.EntitySelector(
+            probatio.Optional(CONF_NOTIFY_TARGETS, default=[]): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="notify", multiple=True)
             ),
-            vol.Required(
+            probatio.Required(
                 CONF_QUIET_START, default=DEFAULT_QUIET_START
             ): selector.TimeSelector(),
-            vol.Required(
+            probatio.Required(
                 CONF_QUIET_END, default=DEFAULT_QUIET_END
             ): selector.TimeSelector(),
-            vol.Required(
+            probatio.Required(
                 CONF_AWAY_TEMPERATURE, default=DEFAULT_AWAY_TEMPERATURE
             ): _temperature_selector(),
-            vol.Required(
+            probatio.Required(
                 CONF_VACATION_TEMPERATURE, default=DEFAULT_VACATION_TEMPERATURE
             ): _temperature_selector(),
-            vol.Required(
+            probatio.Required(
                 CONF_FROST_TEMPERATURE, default=DEFAULT_FROST_TEMPERATURE
             ): _temperature_selector(),
-            vol.Required(
+            probatio.Required(
                 CONF_OVERRIDE_EXPIRY_POLICY, default=DEFAULT_OVERRIDE_EXPIRY_POLICY
             ): selector.SelectSelector(
                 selector.SelectSelectorConfig(
@@ -92,10 +92,10 @@ def _global_settings_schema() -> vol.Schema:
                     translation_key=CONF_OVERRIDE_EXPIRY_POLICY,
                 )
             ),
-            vol.Required(
+            probatio.Required(
                 CONF_OVERRIDE_EXPIRY_DURATION, default=DEFAULT_OVERRIDE_EXPIRY_DURATION
             ): selector.DurationSelector(),
-            vol.Required(
+            probatio.Required(
                 CONF_WINDOW_DELAY, default=DEFAULT_WINDOW_DELAY
             ): selector.DurationSelector(),
         }
