@@ -156,6 +156,21 @@
         }
       }
     },
+    "datetime": {
+      "vacation_end": {
+        "name": "Vacation end"
+      }
+    },
+    "select": {
+      "house_mode": {
+        "name": "House mode",
+        "state": {
+          "auto": "Automatic",
+          "vacation": "Vacation",
+          "off": "Off"
+        }
+      }
+    },
     "sensor": {
       "reason": {
         "name": "Reason",
@@ -205,6 +220,11 @@
     "trv_offline": {
       "title": "Radiator thermostat {trv} unreachable",
       "description": "The radiator thermostat {trv} in room {room} has been unreachable for more than 30 minutes, so it does not get new targets. Check the tado bridge and the batteries of the thermostat. This issue disappears by itself once the thermostat is reachable again."
+    }
+  },
+  "exceptions": {
+    "vacation_end_not_ahead": {
+      "message": "Vacation needs a vacation end in the future. Set the vacation end first."
     }
   },
   "common": {

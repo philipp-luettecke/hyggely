@@ -54,6 +54,7 @@ from .const import (
     CONF_OVERRIDE_EXPIRY_POLICY,
     CONF_SCHEDULE,
     CONF_TRVS,
+    CONF_VACATION_TEMPERATURE,
     CONF_WINDOW_CONTACTS,
     CONF_WINDOW_DELAY,
     DATA_TARGETS_BEFORE_RELOAD,
@@ -64,6 +65,7 @@ from .const import (
     OVERRIDE_EXPIRY_GLOBAL,
     room_entity_unique_id,
 )
+from .house_mode import HouseModeController
 from .presence import Presence
 from .room_mode_store import RoomModeChoice, RoomModeStore
 from .schedule_reader import ScheduleReader
@@ -118,6 +120,7 @@ class RoomController:
         subentry: ConfigSubentry,
         presence: Presence,
         *,
+        house_mode: HouseModeController,
         room_modes: RoomModeStore,
         pacer: CommandPacer,
     ) -> None:
@@ -128,6 +131,7 @@ class RoomController:
         self._hass = hass
         self._entry = entry
         self._presence = presence
+        self._house_mode = house_mode
         self._room_modes = room_modes
         self._pacer = pacer
         self.room_id = subentry.subentry_id
@@ -147,6 +151,7 @@ class RoomController:
         }
         self._frost_temperature = float(entry.options[CONF_FROST_TEMPERATURE])
         self._away_temperature = float(entry.options[CONF_AWAY_TEMPERATURE])
+        self._vacation_temperature = float(entry.options[CONF_VACATION_TEMPERATURE])
         self._override_expiry = _override_expiry(entry, subentry)
         self._window = WindowContacts(
             hass,
@@ -166,6 +171,7 @@ class RoomController:
         self._listeners: list[Callable[[], None]] = []
         self._unsubscribers: list[CALLBACK_TYPE] = []
         self._cancel_reevaluation: CALLBACK_TYPE | None = None
+        self._evaluation_requested = False
         self._evaluation_lock = asyncio.Lock()
         self._reachability = TrvReachability(
             hass,
@@ -254,6 +260,9 @@ class RoomController:
             self._presence.async_add_listener(self._async_request_evaluation)
         )
         self._unsubscribers.append(
+            self._house_mode.async_add_listener(self._async_request_evaluation)
+        )
+        self._unsubscribers.append(
             self._window.async_track(self._async_request_evaluation)
         )
         self._unsubscribers.append(self._reachability.async_start())
@@ -312,9 +321,23 @@ class RoomController:
 
     @callback
     def _async_request_evaluation(self) -> None:
+        """Evaluate soon, once for all requests arriving together.
+
+        At a block boundary both the reevaluation timer and the schedule ask.
+        """
+        if self._evaluation_requested:
+            return
+        self._evaluation_requested = True
         self._entry.async_create_task(
-            self._hass, self._async_evaluate(), f"evaluate room {self.name}"
+            self._hass,
+            self._async_evaluate_requested(),
+            f"evaluate room {self.name}",
+            eager_start=False,
         )
+
+    async def _async_evaluate_requested(self) -> None:
+        self._evaluation_requested = False
+        await self._async_evaluate()
 
     @callback
     def _reevaluation_due(self, _now: datetime) -> None:
@@ -403,10 +426,13 @@ class RoomController:
             level_temperatures=self._level_temperatures,
             frost_temperature=self._frost_temperature,
             away_temperature=self._away_temperature,
+            vacation_temperature=self._vacation_temperature,
             room_mode=self._choice.room_mode,
             override_temperature=self._choice.override_temperature,
             mode_expires_at=self._choice.expires_at,
             away=self._presence.away,
+            house_mode=self._house_mode.house_mode,
+            vacation_end=self._house_mode.vacation_end,
             window_open_since=self._window.open_since,
         )
 

@@ -7,6 +7,20 @@
           "on": "mdi:home-export-outline"
         }
       }
+    },
+    "datetime": {
+      "vacation_end": {
+        "default": "mdi:calendar-end"
+      }
+    },
+    "select": {
+      "house_mode": {
+        "default": "mdi:home-thermometer",
+        "state": {
+          "vacation": "mdi:beach",
+          "off": "mdi:snowflake-thermometer"
+        }
+      }
     }
   }
 }

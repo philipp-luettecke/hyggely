@@ -12,13 +12,20 @@ from homeassistant.helpers import device_registry as dr
 
 from .command_pacer import CommandPacer
 from .const import CONF_AREA, CONF_AWAY_DELAY, CONF_PERSONS, DOMAIN, SUBENTRY_TYPE_ROOM
+from .house_mode import HouseModeController, async_remove_house_mode
 from .notifier import Notifier
 from .presence import Presence
 from .repair_issues import async_track_offline_trvs
 from .room_controller import RoomController
 from .room_mode_store import RoomModeStore, async_remove_room_modes
 
-PLATFORMS = [Platform.BINARY_SENSOR, Platform.CLIMATE, Platform.SENSOR]
+PLATFORMS = [
+    Platform.BINARY_SENSOR,
+    Platform.CLIMATE,
+    Platform.DATETIME,
+    Platform.SELECT,
+    Platform.SENSOR,
+]
 
 
 @dataclass
@@ -27,6 +34,7 @@ class RuntimeData:
 
     presence: Presence
     pacer: CommandPacer
+    house_mode: HouseModeController
     rooms: dict[str, RoomController] = field(default_factory=dict)
 
 
@@ -43,15 +51,26 @@ async def async_setup_entry(
         timedelta(**entry.options[CONF_AWAY_DELAY]),
     )
     pacer = CommandPacer(hass, entry)
-    entry.runtime_data = RuntimeData(presence=presence, pacer=pacer)
+    house_mode = HouseModeController(hass, entry)
+    entry.runtime_data = RuntimeData(
+        presence=presence, pacer=pacer, house_mode=house_mode
+    )
     entry.async_on_unload(pacer.async_stop)
+    entry.async_on_unload(house_mode.async_stop)
+    await house_mode.async_start()
     rooms = entry.get_subentries_of_type(SUBENTRY_TYPE_ROOM)
     room_modes = RoomModeStore(hass, entry.entry_id)
     await room_modes.async_load([subentry.subentry_id for subentry in rooms])
     for subentry in rooms:
         _async_register_room_device(hass, entry, subentry)
         entry.runtime_data.rooms[subentry.subentry_id] = RoomController(
-            hass, entry, subentry, presence, room_modes=room_modes, pacer=pacer
+            hass,
+            entry,
+            subentry,
+            presence,
+            house_mode=house_mode,
+            room_modes=room_modes,
+            pacer=pacer,
         )
 
     entry.async_on_unload(presence.async_stop)
@@ -79,8 +98,9 @@ async def async_unload_entry(
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Forget the room modes of the removed main entry."""
+    """Forget the room modes and the house mode of the removed main entry."""
     await async_remove_room_modes(hass, entry.entry_id)
+    await async_remove_house_mode(hass, entry.entry_id)
 
 
 async def _async_reload(hass: HomeAssistant, entry: ConfigEntry) -> None:

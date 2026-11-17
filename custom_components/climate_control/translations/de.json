@@ -156,6 +156,21 @@
         }
       }
     },
+    "datetime": {
+      "vacation_end": {
+        "name": "Urlaubsende"
+      }
+    },
+    "select": {
+      "house_mode": {
+        "name": "Hausbetriebsart",
+        "state": {
+          "auto": "Automatik",
+          "vacation": "Urlaub",
+          "off": "Aus"
+        }
+      }
+    },
     "sensor": {
       "reason": {
         "name": "Grund",
@@ -205,6 +220,11 @@
     "trv_offline": {
       "title": "Heizkörperthermostat {trv} nicht erreichbar",
       "description": "Das Heizkörperthermostat {trv} im Raum {room} ist seit über 30 Minuten nicht erreichbar und bekommt deshalb keine neuen Sollwerte. Prüfe die tado-Bridge und die Batterien des Thermostats. Der Hinweis verschwindet von selbst, sobald das Thermostat wieder erreichbar ist."
+    }
+  },
+  "exceptions": {
+    "vacation_end_not_ahead": {
+      "message": "Urlaub braucht ein Urlaubsende in der Zukunft. Setze zuerst das Urlaubsende."
     }
   },
   "common": {
