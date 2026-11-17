@@ -62,6 +62,11 @@ class TrvReachability:
         self._cancel_offline_check: CALLBACK_TYPE | None = None
 
     @property
+    def entities(self) -> list[str]:
+        """Return the climate entities of the TRVs and the sensors on their devices."""
+        return list(self._trv_of)
+
+    @property
     def offline(self) -> frozenset[str]:
         """Return the TRVs unreachable for longer than `OFFLINE_AFTER`."""
         return self._offline

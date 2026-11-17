@@ -139,7 +139,7 @@ async def test_trv_without_temperature_sensor_counts_only_its_climate_entity(
     area = ar.async_get(hass).async_create("Bad")
     entry = await add_main_entry(hass)
     await add_room(
-        hass, entry, name="Bad", trv=trv.entity_id, schedule=schedule, area=area.id
+        hass, entry, name="Bad", trvs=[trv.entity_id], schedule=schedule, area=area.id
     )
 
     trv.set_available(False)

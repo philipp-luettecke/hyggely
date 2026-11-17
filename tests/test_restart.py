@@ -27,7 +27,12 @@ async def _three_rooms(
         trv = await simulated_trvs.add(f"trv_{len(trvs)}", target_temperature=17.0)
         area = ar.async_get(hass).async_create(name)
         await add_room(
-            hass, entry, name=name, trv=trv.entity_id, schedule=schedule, area=area.id
+            hass,
+            entry,
+            name=name,
+            trvs=[trv.entity_id],
+            schedule=schedule,
+            area=area.id,
         )
         trvs.append(trv)
     return entry, trvs
