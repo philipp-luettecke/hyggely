@@ -61,6 +61,7 @@ async def test_options_dialog_is_labelled_in_the_language(
 ROOM_SETTINGS = [
     "name",
     "trvs",
+    "window_contacts",
     "schedule",
     "comfort_temperature",
     "night_temperature",

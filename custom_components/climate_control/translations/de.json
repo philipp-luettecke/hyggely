@@ -84,6 +84,7 @@
           "data": {
             "name": "Name",
             "trvs": "Heizkörperthermostat",
+            "window_contacts": "Fensterkontakte",
             "schedule": "Zeitplan",
             "comfort_temperature": "Komfort-Temperatur",
             "night_temperature": "Nacht-Temperatur",
@@ -95,6 +96,7 @@
           },
           "data_description": {
             "trvs": "Das Heizkörperthermostat, das dieser Raum steuert.",
+            "window_contacts": "Ist einer dieser Kontakte länger als die Fenster-Verzögerung offen, erhält der Raum Frostschutz. Ein nicht erreichbarer Kontakt gilt als geschlossen.",
             "schedule": "Zeitplan-Helfer des Raums. Während eines Blocks gilt seine Stufe (Komfort oder Nacht, ohne Angabe Komfort), sonst Eco.",
             "comfort_temperature": "Solltemperatur während eines Blocks mit Stufe Komfort oder ohne Stufe.",
             "night_temperature": "Solltemperatur während eines Blocks mit Stufe Nacht.",
@@ -110,6 +112,7 @@
           "data": {
             "name": "Name",
             "trvs": "Heizkörperthermostat",
+            "window_contacts": "Fensterkontakte",
             "schedule": "Zeitplan",
             "comfort_temperature": "Komfort-Temperatur",
             "night_temperature": "Nacht-Temperatur",
@@ -121,6 +124,7 @@
           },
           "data_description": {
             "trvs": "Das Heizkörperthermostat, das dieser Raum steuert.",
+            "window_contacts": "Ist einer dieser Kontakte länger als die Fenster-Verzögerung offen, erhält der Raum Frostschutz. Ein nicht erreichbarer Kontakt gilt als geschlossen.",
             "schedule": "Zeitplan-Helfer des Raums. Während eines Blocks gilt seine Stufe (Komfort oder Nacht, ohne Angabe Komfort), sonst Eco.",
             "comfort_temperature": "Solltemperatur während eines Blocks mit Stufe Komfort oder ohne Stufe.",
             "night_temperature": "Solltemperatur während eines Blocks mit Stufe Nacht.",

@@ -55,6 +55,8 @@ from .const import (
     CONF_SCHEDULE,
     CONF_TRVS,
     CONF_VACATION_TEMPERATURE,
+    CONF_WINDOW_CONTACTS,
+    CONF_WINDOW_DELAY,
     DATA_TARGETS_BEFORE_RELOAD,
     DEFAULT_LEAD_TIME,
     DEFAULT_NIGHT_TEMPERATURE,
@@ -75,11 +77,14 @@ from .target_resolver import (
     Reason,
     RoomMode,
     RoomSnapshot,
+    ScheduleLevel,
     TrvMode,
+    heat_temperature,
     mode_expires_at,
     resolve,
 )
 from .trv_reachability import TrvReachability
+from .window import WindowContacts
 
 RECENT_DECISIONS = 20
 
@@ -148,6 +153,11 @@ class RoomController:
         self._away_temperature = float(entry.options[CONF_AWAY_TEMPERATURE])
         self._vacation_temperature = float(entry.options[CONF_VACATION_TEMPERATURE])
         self._override_expiry = _override_expiry(entry, subentry)
+        self._window = WindowContacts(
+            hass,
+            subentry.data.get(CONF_WINDOW_CONTACTS, []),
+            timedelta(**entry.options[CONF_WINDOW_DELAY]),
+        )
         self._choice = room_modes.get(self.room_id)
         self._decision: Decision | None = None
         self._next_block_boundary: datetime | None = None
@@ -247,6 +257,9 @@ class RoomController:
         self._unsubscribers.append(
             self._house_mode.async_add_listener(self._async_request_evaluation)
         )
+        self._unsubscribers.append(
+            self._window.async_track(self._async_request_evaluation)
+        )
         self._unsubscribers.append(self._reachability.async_start())
         await self._async_evaluate(catch_up=self._hass.state is not CoreState.running)
 
@@ -256,11 +269,20 @@ class RoomController:
         await self._async_evaluate()
 
     async def async_set_room_mode(self, room_mode: RoomMode) -> None:
-        """Switch the room mode; heat keeps the current target."""
+        """Switch the room mode, on the room entity or at a TRV.
+
+        Heat keeps the current target (a room switched off heats to what auto
+        would); off lasts until the next block boundary, whatever the override
+        expiry rule says.
+        """
         if room_mode is RoomMode.HEAT:
-            if self.target_temperature is None:
+            schedule = self._schedule.read()
+            if schedule is None:
                 return
-            await self._async_choose(RoomMode.HEAT, self.target_temperature)
+            temperature = heat_temperature(
+                self._snapshot_at(dt_util.utcnow(), schedule)
+            )
+            await self._async_choose(RoomMode.HEAT, temperature)
         else:
             await self._async_choose(room_mode, None)
         await self._async_evaluate()
@@ -357,20 +379,7 @@ class RoomController:
                 return
             self._next_block_boundary = schedule.next_block_boundary
             now = dt_util.utcnow()
-            snapshot = RoomSnapshot(
-                now=now,
-                schedule=schedule,
-                level_temperatures=self._level_temperatures,
-                frost_temperature=self._frost_temperature,
-                away_temperature=self._away_temperature,
-                vacation_temperature=self._vacation_temperature,
-                room_mode=self._choice.room_mode,
-                override_temperature=self._choice.override_temperature,
-                mode_expires_at=self._choice.expires_at,
-                away=self._presence.away,
-                house_mode=self._house_mode.house_mode,
-                vacation_end=self._house_mode.vacation_end,
-            )
+            snapshot = self._snapshot_at(now, schedule)
             decision = resolve(snapshot)
             self._snapshot = snapshot
             if not self._recent_decisions or self._recent_decisions[-1][1] != decision:
@@ -403,6 +412,24 @@ class RoomController:
                     )
                 else:
                     await self._async_command(trv, decision)
+
+    @callback
+    def _snapshot_at(self, now: datetime, schedule: ScheduleLevel) -> RoomSnapshot:
+        return RoomSnapshot(
+            now=now,
+            schedule=schedule,
+            level_temperatures=self._level_temperatures,
+            frost_temperature=self._frost_temperature,
+            away_temperature=self._away_temperature,
+            vacation_temperature=self._vacation_temperature,
+            room_mode=self._choice.room_mode,
+            override_temperature=self._choice.override_temperature,
+            mode_expires_at=self._choice.expires_at,
+            away=self._presence.away,
+            house_mode=self._house_mode.house_mode,
+            vacation_end=self._house_mode.vacation_end,
+            window_open_since=self._window.open_since,
+        )
 
     @callback
     def _announce_target_change(self, decision: Decision, now: datetime) -> None:

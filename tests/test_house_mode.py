@@ -1,6 +1,6 @@
 """House mode: vacation lowers all rooms until the vacation end, off protects them.
 
-Ranking below window open: room off > override > house off > vacation > away >
+Ranking: window open > room off > override > house off > vacation > away >
 schedule.
 """
 
@@ -19,6 +19,7 @@ from tests.scenario import (
     LivingRoom,
     Persons,
     Schedules,
+    WindowContact,
     add_room,
     away_state,
     block,
@@ -281,17 +282,94 @@ async def test_room_off_beats_house_off(
     assert commands(room.trv) == [HEAT_21, TRV_OFF]
 
 
+async def test_heat_while_the_house_is_off_overrides_with_the_schedule_level(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+) -> None:
+    """Heat without a temperature in a house off gives comfort, not frost protection."""
+    clock.set("2026-11-16 08:00")
+    room = await living_room(hass, schedules, simulated_trvs)
+    await House(hass, room.entry).select("off")
+
+    await room.call(hass, "set_hvac_mode", hvac_mode="heat")
+
+    assert room.state(hass).state == "heat"
+    assert room.state(hass).attributes["temperature"] == 21.0
+    assert commands(room.trv) == [HEAT_21, TRV_OFF, HEAT_21]
+
+
+async def test_heat_during_vacation_overrides_with_the_vacation_temperature(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+) -> None:
+    """Heat without a temperature keeps the current target, here 15 °C."""
+    clock.set("2026-11-16 08:00")
+    room = await living_room(hass, schedules, simulated_trvs)
+    await _go_on_vacation(House(hass, room.entry), "2026-11-20 18:00")
+
+    await room.call(hass, "set_hvac_mode", hvac_mode="heat")
+
+    assert room.state(hass).state == "heat"
+    assert room.state(hass).attributes["temperature"] == 15.0
+    assert commands(room.trv) == [HEAT_21, HEAT_15]
+
+
+@pytest.mark.parametrize(
+    ("house_mode", "reason_after_closing", "commands_after_closing"),
+    [
+        ("vacation", "vacation", [HEAT_21, HEAT_15, TRV_OFF, HEAT_15]),
+        ("off", "house_off", [HEAT_21, TRV_OFF]),
+    ],
+)
+async def test_window_open_beats_the_house_mode(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+    house_mode: str,
+    reason_after_closing: str,
+    commands_after_closing: list[tuple[str, dict[str, object]]],
+) -> None:
+    """Airing on vacation or in a house off reads window open; closing restores it."""
+    clock.set("2026-11-16 08:00")
+    window = WindowContact(hass, "fenster_wohnzimmer")
+    room = await living_room(
+        hass, schedules, simulated_trvs, window_contacts=[window.entity_id]
+    )
+    house = House(hass, room.entry)
+    if house_mode == "vacation":
+        await _go_on_vacation(house, "2026-11-20 18:00")
+    else:
+        await house.select(house_mode)
+
+    await window.open()
+    await clock.advance_to("2026-11-16 08:01:00")
+    assert room.state(hass).attributes["temperature"] == 7.0
+    assert room.reason(hass).attributes["reason_code"] == "window_open"
+
+    await window.close()
+    assert room.reason(hass).attributes["reason_code"] == reason_after_closing
+    assert commands(room.trv) == commands_after_closing
+
+
 async def _living_room_while_away(
     hass: HomeAssistant,
     schedules: Schedules,
     simulated_trvs: SimulatedTrvs,
     persons: Persons,
     clock: Clock,
+    window_contacts: list[str] | None = None,
 ) -> LivingRoom:
     """At 08:30 Anna has been gone for 30 min: the house is away at 16 °C."""
     clock.set("2026-11-16 08:00")
     entity_ids = await persons.add(anna="not_home")
-    room = await living_room(hass, schedules, simulated_trvs)
+    room = await living_room(
+        hass, schedules, simulated_trvs, window_contacts=window_contacts
+    )
     await change_global_settings(
         hass, room.entry, persons=entity_ids, away_temperature=16.0
     )
@@ -321,6 +399,29 @@ async def test_vacation_beats_away(
     assert room.state(hass).attributes["temperature"] == 16.0
     assert room.reason(hass).attributes["reason_code"] == "away"
     assert commands(room.trv) == [HEAT_21, HEAT_16, HEAT_15, HEAT_16]
+
+
+async def test_window_open_beats_away(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+    persons: Persons,
+) -> None:
+    """Airing in an away house reads window open; closing returns to away."""
+    window = WindowContact(hass, "fenster_wohnzimmer")
+    room = await _living_room_while_away(
+        hass, schedules, simulated_trvs, persons, clock, [window.entity_id]
+    )
+
+    await window.open()
+    await clock.advance_to("2026-11-16 08:31:00")
+    assert room.state(hass).attributes["temperature"] == 7.0
+    assert room.reason(hass).attributes["reason_code"] == "window_open"
+
+    await window.close()
+    assert room.reason(hass).attributes["reason_code"] == "away"
+    assert commands(room.trv) == [HEAT_21, HEAT_16, TRV_OFF, HEAT_16]
 
 
 async def test_house_off_beats_away(
