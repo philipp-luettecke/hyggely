@@ -6,7 +6,7 @@ Spec: `.scratch/heating-control/spec.md`
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] `set_temperature` am Raum-Thermostat setzt den Modus auf `heat` und sendet die Temperatur an das TRV
 - [ ] Rückfall `earliest` endet am früheren von nächstem Schaltpunkt und Dauer, `next_block` und `duration` entsprechend
@@ -35,3 +35,5 @@ Spec: `.scratch/heating-control/spec.md`
 **Aus (für Ticket 07):** Aus läuft über denselben Mechanismus, wird also schon gespeichert und nach einem Neustart bis zum nächsten Schaltpunkt wiederhergestellt. Tests dafür und den Grund „Aus bis …“ ergänzt Ticket 07. `test_room_modes.py` enthält nur noch den Aus-Test aus 03; die Übersteuerungs-Tests stehen in `tests/test_override.py`.
 
 **Tests:** `scenario.shut_down()`/`start_up()` simulieren den Neustart (Eintrag entladen, Zeit vorspulen, neu einrichten). Dabei bleibt nur der Speicher erhalten. `living_room()` nimmt `global_settings`, `add_main_entry()` beliebige globale Einstellungen, und `LivingRoom.call()` ruft eine `climate`-Aktion am Raum-Thermostat auf.
+
+**Abgeschlossen:** Merge-Commit `1b049d5` auf `feat/heating-control`. Ergebnis: Übersteuerung über das Raum-Thermostat mit Rückfallregeln `next_block`/`duration`/`earliest` (global und pro Raum), Rückfallzeitpunkt als Attribut, Wiederherstellung nach Neustart; 98 Tests grün.
