@@ -2,7 +2,26 @@
 
 from typing import Final
 
+from homeassistant.util.hass_dict import HassKey
+
 DOMAIN: Final = "climate_control"
+
+EVENT_TARGET_CHANGED: Final = f"{DOMAIN}_target_changed"
+ATTR_TARGET_TEMPERATURE: Final = "target_temperature"
+ATTR_REASON_CODE: Final = "reason_code"
+ATTR_REASON_PARAMS: Final = "reason_params"
+ATTR_DECIDED_AT: Final = "decided_at"
+
+# Targets of rooms whose controller stopped for a reload, by room id.
+DATA_TARGETS_BEFORE_RELOAD: HassKey[dict[str, float]] = HassKey(
+    f"{DOMAIN}_targets_before_reload"
+)
+
+
+def room_entity_unique_id(room_id: str) -> str:
+    """Return the unique id of the room entity of a room."""
+    return f"{room_id}_climate"
+
 
 CONF_PERSONS: Final = "persons"
 CONF_AWAY_DELAY: Final = "away_delay"

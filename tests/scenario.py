@@ -170,11 +170,21 @@ async def add_room(
 
 def room_entity_id(hass: HomeAssistant, subentry: ConfigSubentry) -> str:
     """Return the entity id of the room entity of a room."""
+    return _entity_id_of_room(hass, subentry, "climate")
+
+
+def reason_entity_id(hass: HomeAssistant, subentry: ConfigSubentry) -> str:
+    """Return the entity id of the reason sensor of a room."""
+    return _entity_id_of_room(hass, subentry, "sensor")
+
+
+def _entity_id_of_room(
+    hass: HomeAssistant, subentry: ConfigSubentry, domain: str
+) -> str:
     return next(
         entry.entity_id
         for entry in er.async_get(hass).entities.values()
-        if entry.config_subentry_id == subentry.subentry_id
-        and entry.domain == "climate"
+        if entry.config_subentry_id == subentry.subentry_id and entry.domain == domain
     )
 
 
@@ -194,6 +204,12 @@ class LivingRoom:
     def state(self, hass: HomeAssistant) -> State:
         """Return the state of the room entity."""
         state = hass.states.get(self.entity_id(hass))
+        assert state is not None
+        return state
+
+    def reason(self, hass: HomeAssistant) -> State:
+        """Return the state of the reason sensor."""
+        state = hass.states.get(reason_entity_id(hass, self.subentry))
         assert state is not None
         return state
 

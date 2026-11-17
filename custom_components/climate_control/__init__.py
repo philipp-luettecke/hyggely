@@ -16,7 +16,7 @@ from .presence import Presence
 from .repair_issues import async_track_offline_trvs
 from .room_controller import RoomController
 
-PLATFORMS = [Platform.BINARY_SENSOR, Platform.CLIMATE]
+PLATFORMS = [Platform.BINARY_SENSOR, Platform.CLIMATE, Platform.SENSOR]
 
 
 @dataclass

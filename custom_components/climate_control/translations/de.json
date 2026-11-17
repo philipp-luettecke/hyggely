@@ -143,6 +143,40 @@
           "off": "Nein"
         }
       }
+    },
+    "sensor": {
+      "reason": {
+        "name": "Grund",
+        "state": {
+          "comfort": "Komfort",
+          "comfort_until": "Komfort bis {until}",
+          "night": "Nacht",
+          "night_until": "Nacht bis {until}",
+          "eco": "Eco",
+          "eco_until": "Eco bis {until}",
+          "override": "Heizen (manuell)",
+          "override_until": "Heizen bis {until} (manuell)",
+          "room_off": "Aus",
+          "room_off_until": "Aus bis {until}",
+          "window_open": "Fenster offen",
+          "window_open_since": "Fenster offen seit {minutes} min",
+          "away": "Abwesend",
+          "vacation": "Urlaub",
+          "vacation_until": "Urlaub bis {until}",
+          "house_off": "Haus aus"
+        },
+        "state_attributes": {
+          "reason_code": {
+            "name": "Grund-Code"
+          },
+          "until": {
+            "name": "Bis"
+          },
+          "since": {
+            "name": "Seit"
+          }
+        }
+      }
     }
   },
   "selector": {
