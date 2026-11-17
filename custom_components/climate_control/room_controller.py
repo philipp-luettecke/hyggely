@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections import deque
 from collections.abc import Callable
 from datetime import datetime
 
@@ -61,6 +62,8 @@ from .target_resolver import (
     resolve,
 )
 
+RECENT_DECISIONS = 20
+
 
 class RoomController:
     """Subscribes the inputs of a room, resolves its target and commands its TRVs.
@@ -89,6 +92,10 @@ class RoomController:
         self._override_temperature: float | None = None
         self._mode_expires_at: datetime | None = None
         self._decision: Decision | None = None
+        self._snapshot: RoomSnapshot | None = None
+        self._recent_decisions: deque[tuple[datetime, Decision]] = deque(
+            maxlen=RECENT_DECISIONS
+        )
         self._target_before_reload = hass.data.get(DATA_TARGETS_BEFORE_RELOAD, {}).pop(
             self.room_id, None
         )
@@ -111,6 +118,16 @@ class RoomController:
     def reason(self) -> Reason | None:
         """Return why the room has its target."""
         return self._decision.reason if self._decision else None
+
+    @property
+    def snapshot(self) -> RoomSnapshot | None:
+        """Return the inputs of the latest decision."""
+        return self._snapshot
+
+    @property
+    def recent_decisions(self) -> list[tuple[datetime, Decision]]:
+        """Return the latest distinct decisions with their time, oldest first."""
+        return list(self._recent_decisions)
 
     @property
     def current_temperature(self) -> float | None:
@@ -207,17 +224,19 @@ class RoomController:
             if schedule is None:
                 return
             now = dt_util.utcnow()
-            decision = resolve(
-                RoomSnapshot(
-                    now=now,
-                    schedule=schedule,
-                    level_temperatures=self._level_temperatures,
-                    frost_temperature=self._frost_temperature,
-                    room_mode=self._room_mode,
-                    override_temperature=self._override_temperature,
-                    mode_expires_at=self._mode_expires_at,
-                )
+            snapshot = RoomSnapshot(
+                now=now,
+                schedule=schedule,
+                level_temperatures=self._level_temperatures,
+                frost_temperature=self._frost_temperature,
+                room_mode=self._room_mode,
+                override_temperature=self._override_temperature,
+                mode_expires_at=self._mode_expires_at,
             )
+            decision = resolve(snapshot)
+            self._snapshot = snapshot
+            if not self._recent_decisions or self._recent_decisions[-1][1] != decision:
+                self._recent_decisions.append((now, decision))
             if decision.room_mode is RoomMode.AUTO:
                 self._set_room_mode(RoomMode.AUTO, None)
             previous_target = (
