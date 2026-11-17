@@ -151,6 +151,40 @@
           "off": "No"
         }
       }
+    },
+    "sensor": {
+      "reason": {
+        "name": "Reason",
+        "state": {
+          "comfort": "Comfort",
+          "comfort_until": "Comfort until {until}",
+          "night": "Night",
+          "night_until": "Night until {until}",
+          "eco": "Eco",
+          "eco_until": "Eco until {until}",
+          "override": "Heating (manual)",
+          "override_until": "Heating until {until} (manual)",
+          "room_off": "Off",
+          "room_off_until": "Off until {until}",
+          "window_open": "Window open",
+          "window_open_since": "Window open for {minutes} min",
+          "away": "Away",
+          "vacation": "Vacation",
+          "vacation_until": "Vacation until {until}",
+          "house_off": "House off"
+        },
+        "state_attributes": {
+          "reason_code": {
+            "name": "Reason code"
+          },
+          "until": {
+            "name": "Until"
+          },
+          "since": {
+            "name": "Since"
+          }
+        }
+      }
     }
   },
   "selector": {

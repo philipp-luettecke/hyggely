@@ -17,7 +17,7 @@ from .repair_issues import async_track_offline_trvs
 from .room_controller import RoomController
 from .room_mode_store import RoomModeStore, async_remove_room_modes
 
-PLATFORMS = [Platform.BINARY_SENSOR, Platform.CLIMATE]
+PLATFORMS = [Platform.BINARY_SENSOR, Platform.CLIMATE, Platform.SENSOR]
 
 
 @dataclass

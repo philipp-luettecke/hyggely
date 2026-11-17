@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections import deque
 from collections.abc import Callable
 from datetime import datetime, timedelta
 from functools import partial
@@ -17,6 +18,7 @@ from homeassistant.components.climate import (
 from homeassistant.config_entries import ConfigEntry, ConfigSubentry
 from homeassistant.const import (
     ATTR_ENTITY_ID,
+    ATTR_NAME,
     ATTR_TEMPERATURE,
     STATE_UNAVAILABLE,
     STATE_UNKNOWN,
@@ -29,6 +31,7 @@ from homeassistant.core import (
     HomeAssistant,
     callback,
 )
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.event import (
     async_track_point_in_utc_time,
     async_track_state_change_event,
@@ -37,6 +40,10 @@ from homeassistant.util import dt as dt_util
 
 from .command_pacer import CommandPacer
 from .const import (
+    ATTR_DECIDED_AT,
+    ATTR_REASON_CODE,
+    ATTR_REASON_PARAMS,
+    ATTR_TARGET_TEMPERATURE,
     CONF_AWAY_TEMPERATURE,
     CONF_COMFORT_TEMPERATURE,
     CONF_ECO_TEMPERATURE,
@@ -47,9 +54,13 @@ from .const import (
     CONF_OVERRIDE_EXPIRY_POLICY,
     CONF_SCHEDULE,
     CONF_TRVS,
+    DATA_TARGETS_BEFORE_RELOAD,
     DEFAULT_LEAD_TIME,
     DEFAULT_NIGHT_TEMPERATURE,
+    DOMAIN,
+    EVENT_TARGET_CHANGED,
     OVERRIDE_EXPIRY_GLOBAL,
+    room_entity_unique_id,
 )
 from .presence import Presence
 from .room_mode_store import RoomModeChoice, RoomModeStore
@@ -67,6 +78,8 @@ from .target_resolver import (
     resolve,
 )
 from .trv_reachability import TrvReachability
+
+RECENT_DECISIONS = 20
 
 
 def _override_expiry(entry: ConfigEntry, subentry: ConfigSubentry) -> OverrideExpiry:
@@ -133,6 +146,13 @@ class RoomController:
         self._choice = room_modes.get(self.room_id)
         self._decision: Decision | None = None
         self._next_block_boundary: datetime | None = None
+        self._snapshot: RoomSnapshot | None = None
+        self._recent_decisions: deque[tuple[datetime, Decision]] = deque(
+            maxlen=RECENT_DECISIONS
+        )
+        self._target_before_reload = hass.data.get(DATA_TARGETS_BEFORE_RELOAD, {}).pop(
+            self.room_id, None
+        )
         self._listeners: list[Callable[[], None]] = []
         self._unsubscribers: list[CALLBACK_TYPE] = []
         self._cancel_reevaluation: CALLBACK_TYPE | None = None
@@ -171,8 +191,18 @@ class RoomController:
 
     @property
     def reason(self) -> Reason | None:
-        """Return why the room has its target temperature."""
+        """Return why the room has its target."""
         return self._decision.reason if self._decision else None
+
+    @property
+    def snapshot(self) -> RoomSnapshot | None:
+        """Return the inputs of the latest decision."""
+        return self._snapshot
+
+    @property
+    def recent_decisions(self) -> list[tuple[datetime, Decision]]:
+        """Return the latest distinct decisions with their time, oldest first."""
+        return list(self._recent_decisions)
 
     @property
     def current_temperature(self) -> float | None:
@@ -244,10 +274,14 @@ class RoomController:
 
     @callback
     def async_stop(self) -> None:
-        """Unsubscribe all inputs and timers."""
+        """Unsubscribe all inputs and timers; a reload compares against the target."""
         while self._unsubscribers:
             self._unsubscribers.pop()()
         self._cancel_pending_reevaluation()
+        if self.target_temperature is not None:
+            self._hass.data.setdefault(DATA_TARGETS_BEFORE_RELOAD, {})[self.room_id] = (
+                self.target_temperature
+            )
 
     @callback
     def _async_request_evaluation(self) -> None:
@@ -300,24 +334,33 @@ class RoomController:
                 return
             self._next_block_boundary = schedule.next_block_boundary
             now = dt_util.utcnow()
-            decision = resolve(
-                RoomSnapshot(
-                    now=now,
-                    schedule=schedule,
-                    level_temperatures=self._level_temperatures,
-                    frost_temperature=self._frost_temperature,
-                    away_temperature=self._away_temperature,
-                    room_mode=self._choice.room_mode,
-                    override_temperature=self._choice.override_temperature,
-                    mode_expires_at=self._choice.expires_at,
-                    away=self._presence.away,
-                )
+            snapshot = RoomSnapshot(
+                now=now,
+                schedule=schedule,
+                level_temperatures=self._level_temperatures,
+                frost_temperature=self._frost_temperature,
+                away_temperature=self._away_temperature,
+                room_mode=self._choice.room_mode,
+                override_temperature=self._choice.override_temperature,
+                mode_expires_at=self._choice.expires_at,
+                away=self._presence.away,
             )
+            decision = resolve(snapshot)
+            self._snapshot = snapshot
+            if not self._recent_decisions or self._recent_decisions[-1][1] != decision:
+                self._recent_decisions.append((now, decision))
             if (
                 decision.room_mode is RoomMode.AUTO
                 and self._choice.room_mode is not RoomMode.AUTO
             ):
                 await self._async_choose(RoomMode.AUTO, None)
+            previous_target = (
+                self._decision.target_temperature
+                if self._decision
+                else self._target_before_reload
+            )
+            if previous_target not in (None, decision.target_temperature):
+                self._announce_target_change(decision, now)
             self._decision = decision
             self._notify_listeners()
             if decision.reevaluate_at is not None and decision.reevaluate_at > now:
@@ -334,6 +377,27 @@ class RoomController:
                     )
                 else:
                     await self._async_command(trv, decision)
+
+    @callback
+    def _announce_target_change(self, decision: Decision, now: datetime) -> None:
+        """Fire the event the logbook describes as a target change with reason."""
+        entity_id = er.async_get(self._hass).async_get_entity_id(
+            CLIMATE_DOMAIN, DOMAIN, room_entity_unique_id(self.room_id)
+        )
+        self._hass.bus.async_fire(
+            EVENT_TARGET_CHANGED,
+            {
+                ATTR_ENTITY_ID: entity_id,
+                ATTR_NAME: self.name,
+                ATTR_TARGET_TEMPERATURE: decision.target_temperature,
+                ATTR_REASON_CODE: decision.reason.code.value,
+                ATTR_REASON_PARAMS: {
+                    key: value.isoformat() if isinstance(value, datetime) else value
+                    for key, value in decision.reason.params.items()
+                },
+                ATTR_DECIDED_AT: now.isoformat(),
+            },
+        )
 
     @callback
     def _deviates(self, trv: str, decision: Decision) -> bool:

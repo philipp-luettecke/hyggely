@@ -61,12 +61,24 @@ class OverrideExpiry:
 
 
 class ReasonCode(StrEnum):
-    """Stable codes explaining a decision."""
+    """Stable codes explaining a decision, offered to automations.
 
-    SCHEDULE = "schedule"
+    Schedule levels share their value with their code. Parameters:
+    `until` (datetime | None) for comfort, night, eco (next block boundary),
+    override and room_off (when the room returns to auto) and vacation (its end);
+    `since` (datetime) for window_open (when the window was opened);
+    none for away and house_off.
+    """
+
+    COMFORT = "comfort"
+    NIGHT = "night"
+    ECO = "eco"
     OVERRIDE = "override"
     ROOM_OFF = "room_off"
+    WINDOW_OPEN = "window_open"
     AWAY = "away"
+    VACATION = "vacation"
+    HOUSE_OFF = "house_off"
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -185,8 +197,8 @@ def resolve(snapshot: RoomSnapshot) -> Decision:
         level=schedule.level,
         trv_mode=TrvMode.HEAT,
         reason=Reason(
-            code=ReasonCode.SCHEDULE,
-            params={"level": schedule.level, "until": schedule.next_block_boundary},
+            code=ReasonCode(schedule.level.value),
+            params={"until": schedule.next_block_boundary},
         ),
         reevaluate_at=schedule.next_block_boundary,
     )

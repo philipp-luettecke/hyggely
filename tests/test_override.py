@@ -73,14 +73,17 @@ async def test_override_is_given_as_reason_until_auto(
     schedules: Schedules,
     simulated_trvs: SimulatedTrvs,
 ) -> None:
-    """The room entity names the manual override as reason, then the schedule."""
-    clock.set("2026-11-16 12:00")
+    """The reason reads manual heating until the override expiry, then eco again."""
+    await hass.config.async_update(language="de")
+    clock.set("2026-11-16 11:00")
     room = await living_room(hass, schedules, simulated_trvs)
 
     await room.call(hass, "set_temperature", temperature=23)
+    assert room.reason(hass).state == "Heizen bis 14:00 (manuell)"
     assert room.state(hass).attributes["reason"] == "override"
 
     await room.call(hass, "set_hvac_mode", hvac_mode="auto")
+    assert room.reason(hass).attributes["reason_code"] == "eco"
     assert room.state(hass).attributes["reason"] == "schedule"
 
 
@@ -234,6 +237,8 @@ async def test_override_survives_a_restart_with_its_remaining_time(
     assert room.state(hass).state == "heat"
     assert room.state(hass).attributes["temperature"] == 23.0
     assert room.state(hass).attributes["override_expiry"] == local("2026-11-16 15:00")
+    assert room.reason(hass).attributes["reason_code"] == "override"
+    assert room.reason(hass).attributes["until"] == local("2026-11-16 15:00")
     assert commands(room.trv) == [HEAT_17, HEAT_23]
 
     await clock.advance_to("2026-11-16 15:00:00")
