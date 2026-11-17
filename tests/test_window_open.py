@@ -309,6 +309,36 @@ async def test_new_temperature_while_the_window_is_open_is_heated_after_closing(
     assert commands(room.trv) == [HEAT_21, FROST, HEAT_23]
 
 
+async def test_knob_turn_while_the_window_is_open_is_heated_after_closing(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+) -> None:
+    """Turned to 23 °C while airing: back to frost at once, 23 °C after closing."""
+    clock.set("2026-11-16 08:00")
+    room, window = await _living_room_with_window(hass, schedules, simulated_trvs)
+    await window.open()
+    await clock.advance_to("2026-11-16 08:05:20")
+
+    room.trv.turn_knob(23.0)
+    await clock.advance_to("2026-11-16 08:06:00")
+
+    assert room.state(hass).state == "heat"
+    assert room.state(hass).attributes["temperature"] == 7.0
+    assert room.reason(hass).attributes["reason_code"] == "window_open"
+    assert commands(room.trv) == [HEAT_21, FROST, FROST]
+    trv_state = hass.states.get(room.trv.entity_id)
+    assert trv_state is not None
+    assert trv_state.state == "off"
+
+    await window.close()
+
+    assert room.state(hass).attributes["temperature"] == 23.0
+    assert room.state(hass).attributes["override_expiry"] == local("2026-11-16 09:00")
+    assert commands(room.trv) == [HEAT_21, FROST, FROST, HEAT_23]
+
+
 async def test_heat_while_the_window_is_open_overrides_with_the_schedule_level(
     hass: HomeAssistant,
     clock: Clock,

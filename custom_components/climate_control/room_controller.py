@@ -360,17 +360,21 @@ class RoomController:
         classification = self._detector.classify(
             trv, reported, target=_target_setting(decision), now=dt_util.utcnow()
         )
+        # Not eager: a command sent while the report is still being written would
+        # be overwritten by the reported state.
         if classification is Classification.EXTERNAL_CHANGE:
             self._entry.async_create_task(
                 self._hass,
                 self._async_take_external_change(reported),
                 f"take external change of {trv}",
+                eager_start=False,
             )
         elif classification is Classification.NOT_TAKEN:
             self._entry.async_create_task(
                 self._hass,
                 self._async_repeat_command(trv),
                 f"repeat command to {trv}",
+                eager_start=False,
             )
 
     async def _async_take_external_change(self, setting: TrvSetting) -> None:
