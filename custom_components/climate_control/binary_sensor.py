@@ -4,11 +4,10 @@ from __future__ import annotations
 
 from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import ClimateControlConfigEntry
-from .const import DOMAIN
+from .house_mode import house_device_info
 from .presence import Presence
 
 
@@ -32,13 +31,7 @@ class AwayBinarySensor(BinarySensorEntity):
         """Represent away as derived by `presence`."""
         self._presence = presence
         self._attr_unique_id = f"{entry_id}_away"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, entry_id)},
-            translation_key="house",
-            manufacturer="Climate Control",
-            model="House",
-            entry_type=DeviceEntryType.SERVICE,
-        )
+        self._attr_device_info = house_device_info(entry_id)
 
     async def async_added_to_hass(self) -> None:
         """Follow the presence."""

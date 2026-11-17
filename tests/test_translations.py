@@ -150,3 +150,26 @@ async def test_away_entity_of_the_house_is_labelled_in_the_language(
     assert entities[f"{prefix}.name"] == away
     assert entities[f"{prefix}.state.on"] == on
     assert entities[f"{prefix}.state.off"] == off
+
+
+@pytest.mark.parametrize(
+    ("language", "house_mode", "auto", "vacation_end"),
+    [
+        ("en", "House mode", "Automatic", "Vacation end"),
+        ("de", "Hausbetriebsart", "Automatik", "Urlaubsende"),
+    ],
+)
+async def test_house_mode_and_vacation_end_are_labelled_in_the_language(
+    hass: HomeAssistant, language: str, house_mode: str, auto: str, vacation_end: str
+) -> None:
+    """House mode with its three options, vacation end and the refusal of vacation."""
+    entities = await async_get_translations(hass, language, "entity", [DOMAIN])
+    errors = await async_get_translations(hass, language, "exceptions", [DOMAIN])
+    prefix = f"component.{DOMAIN}.entity"
+
+    assert entities[f"{prefix}.select.house_mode.name"] == house_mode
+    assert entities[f"{prefix}.select.house_mode.state.auto"] == auto
+    assert entities[f"{prefix}.select.house_mode.state.vacation"]
+    assert entities[f"{prefix}.select.house_mode.state.off"]
+    assert entities[f"{prefix}.datetime.vacation_end.name"] == vacation_end
+    assert errors[f"component.{DOMAIN}.exceptions.vacation_end_not_ahead.message"]
