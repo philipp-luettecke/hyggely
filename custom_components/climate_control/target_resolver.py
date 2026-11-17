@@ -19,6 +19,7 @@ class Level(StrEnum):
     """Schedule levels; eco applies outside blocks."""
 
     COMFORT = "comfort"
+    NIGHT = "night"
     ECO = "eco"
 
 

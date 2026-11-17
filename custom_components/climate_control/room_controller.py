@@ -37,8 +37,10 @@ from .const import (
     CONF_COMFORT_TEMPERATURE,
     CONF_ECO_TEMPERATURE,
     CONF_FROST_TEMPERATURE,
+    CONF_NIGHT_TEMPERATURE,
     CONF_SCHEDULE,
     CONF_TRVS,
+    DEFAULT_NIGHT_TEMPERATURE,
 )
 from .schedule_reader import ScheduleReader
 from .target_resolver import (
@@ -71,6 +73,9 @@ class RoomController:
         self._schedule = ScheduleReader(hass, subentry.data[CONF_SCHEDULE])
         self._level_temperatures = {
             Level.COMFORT: float(subentry.data[CONF_COMFORT_TEMPERATURE]),
+            Level.NIGHT: float(
+                subentry.data.get(CONF_NIGHT_TEMPERATURE, DEFAULT_NIGHT_TEMPERATURE)
+            ),
             Level.ECO: float(subentry.data[CONF_ECO_TEMPERATURE]),
         }
         self._frost_temperature = float(entry.options[CONF_FROST_TEMPERATURE])
@@ -114,7 +119,7 @@ class RoomController:
     async def async_start(self) -> None:
         """Subscribe the inputs and bring the TRVs into the decided state."""
         self._unsubscribers.append(
-            self._schedule.async_track(self._async_request_evaluation)
+            await self._schedule.async_track(self._async_request_evaluation)
         )
         self._unsubscribers.append(
             async_track_state_change_event(self._hass, self._trvs, self._trv_changed)
