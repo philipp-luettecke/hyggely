@@ -43,6 +43,8 @@ OVERRIDE_EXPIRY_POLICIES: Final = [
     OVERRIDE_EXPIRY_DURATION,
     OVERRIDE_EXPIRY_EARLIEST,
 ]
+OVERRIDE_EXPIRY_GLOBAL: Final = "global"
+"""Room setting: use the override expiry policy of the main entry."""
 
 DEFAULT_AWAY_DELAY: Final = {"hours": 0, "minutes": 30, "seconds": 0}
 DEFAULT_QUIET_START: Final = "22:00:00"

@@ -15,6 +15,7 @@ from .const import CONF_AREA, CONF_AWAY_DELAY, CONF_PERSONS, DOMAIN, SUBENTRY_TY
 from .presence import Presence
 from .repair_issues import async_track_offline_trvs
 from .room_controller import RoomController
+from .room_mode_store import RoomModeStore, async_remove_room_modes
 
 PLATFORMS = [Platform.BINARY_SENSOR, Platform.CLIMATE, Platform.SENSOR]
 
@@ -43,10 +44,13 @@ async def async_setup_entry(
     pacer = CommandPacer(hass, entry)
     entry.runtime_data = RuntimeData(presence=presence, pacer=pacer)
     entry.async_on_unload(pacer.async_stop)
-    for subentry in entry.get_subentries_of_type(SUBENTRY_TYPE_ROOM):
+    rooms = entry.get_subentries_of_type(SUBENTRY_TYPE_ROOM)
+    room_modes = RoomModeStore(hass, entry.entry_id)
+    await room_modes.async_load([subentry.subentry_id for subentry in rooms])
+    for subentry in rooms:
         _async_register_room_device(hass, entry, subentry)
         entry.runtime_data.rooms[subentry.subentry_id] = RoomController(
-            hass, entry, subentry, presence, pacer=pacer
+            hass, entry, subentry, presence, room_modes=room_modes, pacer=pacer
         )
 
     entry.async_on_unload(presence.async_stop)
@@ -67,6 +71,11 @@ async def async_unload_entry(
 ) -> bool:
     """Unload the main entry."""
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Forget the room modes of the removed main entry."""
+    await async_remove_room_modes(hass, entry.entry_id)
 
 
 async def _async_reload(hass: HomeAssistant, entry: ConfigEntry) -> None:

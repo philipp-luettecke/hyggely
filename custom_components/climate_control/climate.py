@@ -27,6 +27,8 @@ from .target_resolver import RoomMode
 
 ATTR_LEVEL = "level"
 ATTR_NEXT_BLOCK_BOUNDARY = "next_block_boundary"
+ATTR_REASON = "reason"
+ATTR_OVERRIDE_EXPIRY = "override_expiry"
 
 
 async def async_setup_entry(
@@ -81,10 +83,13 @@ class RoomClimate(ClimateEntity):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Return the active level and the next block boundary."""
+        """Return level, next block boundary, reason code and override expiry."""
+        reason = self._controller.reason
         return {
             ATTR_LEVEL: self._controller.level,
             ATTR_NEXT_BLOCK_BOUNDARY: self._controller.next_block_boundary,
+            ATTR_REASON: reason.code if reason else None,
+            ATTR_OVERRIDE_EXPIRY: self._controller.mode_expires_at,
         }
 
     async def async_set_temperature(self, **kwargs: Any) -> None:

@@ -50,6 +50,8 @@ from .const import (
     CONF_FROST_TEMPERATURE,
     CONF_LEAD_TIME,
     CONF_NIGHT_TEMPERATURE,
+    CONF_OVERRIDE_EXPIRY_DURATION,
+    CONF_OVERRIDE_EXPIRY_POLICY,
     CONF_SCHEDULE,
     CONF_TRVS,
     DATA_TARGETS_BEFORE_RELOAD,
@@ -57,22 +59,40 @@ from .const import (
     DEFAULT_NIGHT_TEMPERATURE,
     DOMAIN,
     EVENT_TARGET_CHANGED,
+    OVERRIDE_EXPIRY_GLOBAL,
     room_entity_unique_id,
 )
 from .presence import Presence
+from .room_mode_store import RoomModeChoice, RoomModeStore
 from .schedule_reader import ScheduleReader
 from .target_resolver import (
     Decision,
     Level,
+    OverrideExpiry,
+    OverrideExpiryPolicy,
     Reason,
     RoomMode,
     RoomSnapshot,
     TrvMode,
+    mode_expires_at,
     resolve,
 )
 from .trv_reachability import TrvReachability
 
 RECENT_DECISIONS = 20
+
+
+def _override_expiry(entry: ConfigEntry, subentry: ConfigSubentry) -> OverrideExpiry:
+    """Return the override expiry rule of a room; room settings beat global ones."""
+    policy = subentry.data.get(CONF_OVERRIDE_EXPIRY_POLICY, OVERRIDE_EXPIRY_GLOBAL)
+    if policy == OVERRIDE_EXPIRY_GLOBAL:
+        policy = entry.options[CONF_OVERRIDE_EXPIRY_POLICY]
+    duration = subentry.data.get(
+        CONF_OVERRIDE_EXPIRY_DURATION, entry.options[CONF_OVERRIDE_EXPIRY_DURATION]
+    )
+    return OverrideExpiry(
+        policy=OverrideExpiryPolicy(policy), duration=timedelta(**duration)
+    )
 
 
 class RoomController:
@@ -86,19 +106,24 @@ class RoomController:
     while Home Assistant starts go through the command pacer, one after another.
     """
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         hass: HomeAssistant,
         entry: ConfigEntry,
         subentry: ConfigSubentry,
         presence: Presence,
         *,
+        room_modes: RoomModeStore,
         pacer: CommandPacer,
     ) -> None:
-        """Create the controller for the room `subentry` of the main entry."""
+        """Create the controller for the room `subentry` of the main entry.
+
+        The room continues with the room mode saved in `room_modes`.
+        """
         self._hass = hass
         self._entry = entry
         self._presence = presence
+        self._room_modes = room_modes
         self._pacer = pacer
         self.room_id = subentry.subentry_id
         self.name = subentry.title
@@ -117,9 +142,8 @@ class RoomController:
         }
         self._frost_temperature = float(entry.options[CONF_FROST_TEMPERATURE])
         self._away_temperature = float(entry.options[CONF_AWAY_TEMPERATURE])
-        self._room_mode = RoomMode.AUTO
-        self._override_temperature: float | None = None
-        self._mode_expires_at: datetime | None = None
+        self._override_expiry = _override_expiry(entry, subentry)
+        self._choice = room_modes.get(self.room_id)
         self._decision: Decision | None = None
         self._next_block_boundary: datetime | None = None
         self._snapshot: RoomSnapshot | None = None
@@ -159,6 +183,11 @@ class RoomController:
     def next_block_boundary(self) -> datetime | None:
         """Return when the level from the schedule changes next, lead time included."""
         return self._next_block_boundary
+
+    @property
+    def mode_expires_at(self) -> datetime | None:
+        """Return when the room returns to auto (override expiry)."""
+        return self._decision.mode_expires_at if self._decision else None
 
     @property
     def reason(self) -> Reason | None:
@@ -213,8 +242,8 @@ class RoomController:
         await self._async_evaluate(catch_up=self._hass.state is not CoreState.running)
 
     async def async_set_override(self, temperature: float) -> None:
-        """Heat to `temperature` until the next block boundary."""
-        self._set_room_mode(RoomMode.HEAT, temperature)
+        """Heat to `temperature` until the override expiry."""
+        await self._async_choose(RoomMode.HEAT, temperature)
         await self._async_evaluate()
 
     async def async_set_room_mode(self, room_mode: RoomMode) -> None:
@@ -222,18 +251,26 @@ class RoomController:
         if room_mode is RoomMode.HEAT:
             if self.target_temperature is None:
                 return
-            self._set_room_mode(RoomMode.HEAT, self.target_temperature)
+            await self._async_choose(RoomMode.HEAT, self.target_temperature)
         else:
-            self._set_room_mode(room_mode, None)
+            await self._async_choose(room_mode, None)
         await self._async_evaluate()
 
-    @callback
-    def _set_room_mode(self, room_mode: RoomMode, temperature: float | None) -> None:
-        self._room_mode = room_mode
-        self._override_temperature = temperature
-        self._mode_expires_at = None
-        if room_mode is not RoomMode.AUTO and (schedule := self._schedule.read()):
-            self._mode_expires_at = schedule.next_block_boundary
+    async def _async_choose(
+        self, room_mode: RoomMode, temperature: float | None
+    ) -> None:
+        schedule = self._schedule.read()
+        self._choice = RoomModeChoice(
+            room_mode=room_mode,
+            override_temperature=temperature,
+            expires_at=mode_expires_at(
+                room_mode,
+                now=dt_util.utcnow(),
+                next_block_boundary=schedule.next_block_boundary if schedule else None,
+                override_expiry=self._override_expiry,
+            ),
+        )
+        await self._room_modes.async_save(self.room_id, self._choice)
 
     @callback
     def async_stop(self) -> None:
@@ -303,17 +340,20 @@ class RoomController:
                 level_temperatures=self._level_temperatures,
                 frost_temperature=self._frost_temperature,
                 away_temperature=self._away_temperature,
-                room_mode=self._room_mode,
-                override_temperature=self._override_temperature,
-                mode_expires_at=self._mode_expires_at,
+                room_mode=self._choice.room_mode,
+                override_temperature=self._choice.override_temperature,
+                mode_expires_at=self._choice.expires_at,
                 away=self._presence.away,
             )
             decision = resolve(snapshot)
             self._snapshot = snapshot
             if not self._recent_decisions or self._recent_decisions[-1][1] != decision:
                 self._recent_decisions.append((now, decision))
-            if decision.room_mode is RoomMode.AUTO:
-                self._set_room_mode(RoomMode.AUTO, None)
+            if (
+                decision.room_mode is RoomMode.AUTO
+                and self._choice.room_mode is not RoomMode.AUTO
+            ):
+                await self._async_choose(RoomMode.AUTO, None)
             previous_target = (
                 self._decision.target_temperature
                 if self._decision

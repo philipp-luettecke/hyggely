@@ -67,6 +67,8 @@ ROOM_SETTINGS = [
     "eco_temperature",
     "lead_time",
     "area",
+    "override_expiry_policy",
+    "override_expiry_duration",
 ]
 
 
@@ -109,6 +111,7 @@ async def test_override_expiry_policies_are_labelled_in_the_language(
     assert texts[f"{prefix}.earliest"] == earliest_label
     assert texts[f"{prefix}.next_block"]
     assert texts[f"{prefix}.duration"]
+    assert texts[f"{prefix}.global"]
 
 
 @pytest.mark.parametrize(

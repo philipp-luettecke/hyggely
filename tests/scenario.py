@@ -105,19 +105,32 @@ class Schedules:
         return result
 
 
-async def add_main_entry(hass: HomeAssistant) -> ConfigEntry:
-    """Set up the main entry with the default global settings."""
+async def add_main_entry(hass: HomeAssistant, **settings: Any) -> ConfigEntry:
+    """Set up the main entry; global settings left out keep their defaults."""
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": SOURCE_USER}
     )
-    result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], settings)
     await hass.async_block_till_done()
     entry: ConfigEntry = result["result"]
     return entry
 
 
+async def shut_down(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Stop the integration as Home Assistant does when it shuts down."""
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+
+
+async def start_up(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Start the integration as Home Assistant does when it starts."""
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+
 def room_settings(subentry: ConfigSubentry) -> dict[str, Any]:
     """Return the values of the room dialog as currently configured."""
+    optional = ("override_expiry_policy", "override_expiry_duration")
     return {
         "name": subentry.title,
         "trvs": subentry.data["trvs"][0],
@@ -127,6 +140,7 @@ def room_settings(subentry: ConfigSubentry) -> dict[str, Any]:
         "eco_temperature": subentry.data["eco_temperature"],
         "lead_time": subentry.data["lead_time"],
         "area": subentry.data["area"],
+        **{key: subentry.data[key] for key in optional if key in subentry.data},
     }
 
 
@@ -213,6 +227,16 @@ class LivingRoom:
         assert state is not None
         return state
 
+    async def call(self, hass: HomeAssistant, service: str, **data: Any) -> None:
+        """Call a `climate` action on the room entity, e.g. from Siri or the app."""
+        await hass.services.async_call(
+            "climate",
+            service,
+            {"entity_id": self.entity_id(hass), **data},
+            blocking=True,
+        )
+        await hass.async_block_till_done()
+
 
 async def living_room(
     hass: HomeAssistant,
@@ -223,6 +247,7 @@ async def living_room(
     trv_temperature: float = 15.0,
     current_temperature: float = 19.5,
     lead_minutes: int = 0,
+    global_settings: dict[str, Any] | None = None,
     **weekdays: list[dict[str, Any]],
 ) -> LivingRoom:
     """Add the living room with comfort 21 °C, night 16 °C and eco 17 °C.
@@ -240,7 +265,7 @@ async def living_room(
         current_temperature=current_temperature,
     )
     area = ar.async_get(hass).async_create("Wohnzimmer")
-    entry = await add_main_entry(hass)
+    entry = await add_main_entry(hass, **(global_settings or {}))
     subentry = await add_room(
         hass,
         entry,
