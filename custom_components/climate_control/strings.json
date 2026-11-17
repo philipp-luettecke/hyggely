@@ -229,5 +229,10 @@
     "vacation_end_not_ahead": {
       "message": "Vacation needs a vacation end in the future. Set the vacation end first."
     }
+  },
+  "common": {
+    "notification_title": "Heating",
+    "window_open": "Window open for more than {minutes} min: {rooms}",
+    "trv_offline": "Radiator thermostat unreachable for more than {minutes} min: {trvs}"
   }
 }

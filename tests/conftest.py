@@ -7,6 +7,7 @@ import pytest
 from pytest_homeassistant.typing import WebSocketGenerator
 
 from tests.scenario import TIME_ZONE, Clock, Persons, Schedules
+from tests.simulated_phone import SimulatedPhones
 from tests.simulated_trv import SimulatedTrvs
 
 
@@ -20,6 +21,12 @@ def expected_lingering_timers() -> bool:
 def simulated_trvs(hass: HomeAssistant) -> SimulatedTrvs:
     """Return a factory for simulated tado TRVs."""
     return SimulatedTrvs(hass)
+
+
+@pytest.fixture
+def phones(hass: HomeAssistant) -> SimulatedPhones:
+    """Return a factory for phones that receive notifications."""
+    return SimulatedPhones(hass)
 
 
 @pytest.fixture
