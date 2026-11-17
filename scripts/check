@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# Lint, type check and test the integration. Runs on Linux (WSL on Windows).
+#
+#   scripts/check                   ruff check, ruff format --check, mypy, pytest
+#   scripts/check <pytest args>     only pytest, e.g. scripts/check tests/test_init.py
+#
+# The virtualenv and all caches live on the Linux filesystem, one virtualenv per
+# checkout, so several worktrees can run this concurrently.
+set -euo pipefail
+
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+root="$(pwd -P)"
+
+export PATH="$HOME/.local/bin:$PATH"
+if ! command -v uv >/dev/null; then
+    echo "uv not found. Install it: https://docs.astral.sh/uv/getting-started/installation/" >&2
+    exit 1
+fi
+
+cache_root="${XDG_CACHE_HOME:-$HOME/.cache}/climate-control"
+env_dir="$cache_root/venvs/$(printf '%s' "$root" | sha256sum | cut -c1-16)"
+export UV_PROJECT_ENVIRONMENT="$env_dir"
+export UV_CACHE_DIR="${UV_CACHE_DIR:-$cache_root/uv}"
+export PYTHONPYCACHEPREFIX="$env_dir/pycache"
+export MYPY_CACHE_DIR="$env_dir/mypy_cache"
+export RUFF_CACHE_DIR="$env_dir/ruff_cache"
+
+uv sync --locked --quiet
+
+pytest=(uv run --no-sync pytest -o "cache_dir=$env_dir/pytest_cache")
+
+if [[ $# -gt 0 ]]; then
+    exec "${pytest[@]}" "$@"
+fi
+
+uv run --no-sync ruff check .
+uv run --no-sync ruff format --check .
+uv run --no-sync mypy
+"${pytest[@]}"
