@@ -1,0 +1,12 @@
+{
+  "entity": {
+    "binary_sensor": {
+      "away": {
+        "default": "mdi:home-account",
+        "state": {
+          "on": "mdi:home-export-outline"
+        }
+      }
+    }
+  }
+}
