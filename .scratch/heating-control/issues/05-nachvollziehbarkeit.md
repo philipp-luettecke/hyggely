@@ -6,7 +6,7 @@ Spec: `.scratch/heating-control/spec.md`
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Pro Raum gibt es einen Grund-Sensor mit deutschem und englischem Klartext
 - [ ] Der Grund-Code ist ein stabiler, dokumentierter Wert und als Attribut verfügbar
@@ -45,3 +45,5 @@ Spec: `.scratch/heating-control/spec.md`
 **Offen:** Die Spec nennt „Grund“ auch als Attribut des Raum-Thermostats. Das ist hier nicht umgesetzt (das Ticket verlangt nur den Sensor). Ob Text oder Code gemeint ist, bitte bei Bedarf festlegen.
 
 **Tests:** `tests/test_reason.py` (Komfort, Nacht, Eco mit Datum, Übersteuerung, Aus, Abwesend, Englisch, Sprachwechsel, Texte aller Codes in beiden Sprachen), `tests/test_logbook.py` (echtes Logbuch mit In-Memory-Recorder; `frontend` wird nur als geladen markiert), `tests/test_diagnostics.py` (Download über die HTTP-API). Websocket- und HTTP-Clients brauchen ein Token, das nicht in der Zukunft ausgestellt ist. Deshalb öffnen die Tests die Verbindung vor dem Zurückstellen der Uhr bzw. stellen das Token zur Testzeit aus.
+
+**Abgeschlossen:** Merge-Commit `8dd8674` auf `feat/heating-control`. Ergebnis: Grund-Sensor (de/en) mit allen neun Grund-Codes, ein Logbuch-Eintrag pro Sollwert-Änderung, Diagnose-Export; 86 Tests grün. Das Logbuch-Rauschen bei „Fenster offen seit N min“ wird in Ticket 10 geklärt.
