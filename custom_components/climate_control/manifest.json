@@ -1,7 +1,7 @@
 {
   "domain": "climate_control",
   "name": "Climate Control",
-  "after_dependencies": ["schedule"],
+  "after_dependencies": ["person", "schedule"],
   "categories": ["climate.thermostats_heating"],
   "codeowners": [],
   "config_flow": true,
