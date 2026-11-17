@@ -6,7 +6,7 @@ Spec: `.scratch/heating-control/spec.md`
 
 **Blocked by:** 08
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Im Einrichtungs- und Optionsdialog eines Raums lassen sich mehrere TRVs wählen
 - [ ] Alle TRVs eines Raums erhalten bei jeder Entscheidung denselben Sollwert und Modus
@@ -24,3 +24,5 @@ Spec: `.scratch/heating-control/spec.md`
 **Entscheidung:** Drehen zwei Personen in derselben Minute an zwei TRVs unterschiedlich, gewinnt die zuletzt verarbeitete Meldung; beide TRVs werden darauf angeglichen. Nicht eigens getestet.
 
 **Tests:** `tests/scenario.py: add_room` nimmt jetzt `trvs=[...]` statt `trv=...`.
+
+**Abgeschlossen:** Merge-Commit `8bfe38b` auf `feat/heating-control`. Ergebnis: mehrere TRVs pro Raum mit gleichem Sollwert, Ist-Temperatur als Mittelwert der erreichbaren TRVs, Angleichen ohne zweite Übersteuerung; 182 Tests grün.
