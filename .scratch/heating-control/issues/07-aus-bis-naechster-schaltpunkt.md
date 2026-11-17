@@ -6,7 +6,7 @@ Spec: `.scratch/heating-control/spec.md`
 
 **Blocked by:** 06
 
-**Status:** ready-for-agent
+**Status:** needs-info
 
 - [ ] `set_hvac_mode(off)` setzt den Raum auf Aus und das TRV auf `off`
 - [ ] Am nächsten Schaltpunkt wechselt der Raum zu Auto und das TRV erhält die Zeitplan-Stufe
@@ -24,3 +24,7 @@ Spec: `.scratch/heating-control/spec.md`
 **Für Ticket 08:** Ausschalten am Gerät läuft über `RoomController.async_set_room_mode(RoomMode.OFF)`, denselben Einstieg wie Aus am Raum-Thermostat. Der Rückfallzeitpunkt ist dann automatisch der nächste Schaltpunkt.
 
 **Randfälle (bewusst wie bei der Übersteuerung in 06):** Der Rückfallzeitpunkt von Aus wird beim Ausschalten festgelegt und bei einer späteren Zeitplanänderung nicht verschoben. Ein Zeitplan ganz ohne Blöcke hat keinen Schaltpunkt; dann bleibt Aus bis „Auto“ bestehen. Mit Vorlaufzeit endet Aus am wirksamen Schaltpunkt, also um die Vorlaufzeit vor Blockbeginn.
+
+**Frage (needs-info): Heizen ohne Temperatur aus Aus.** Die Spec sagt wörtlich: „`set_hvac_mode(heat)` ohne Temperatur übersteuert mit dem aktuellen Sollwert.“ Bei einem ausgeschalteten Raum ist der aktuelle Sollwert der Frostschutz (7 °C). Umgesetzt ist deshalb abweichend die Temperatur, die Auto gerade hätte (siehe Entscheidung oben). Soll das so bleiben (Empfehlung), oder gilt der Wortlaut der Spec? Gleiches gilt sinngemäß bei offenem Fenster (Ticket 10).
+
+**Zwischenstand:** Merge-Commit `d4c735b` auf `feat/heating-control` (106 Tests grün). Alle übrigen Kriterien sind umgesetzt; das Ticket bleibt `needs-info`, bis die Frage entschieden ist.
