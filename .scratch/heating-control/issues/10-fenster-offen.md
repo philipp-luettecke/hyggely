@@ -6,7 +6,7 @@ Spec: `.scratch/heating-control/spec.md`
 
 **Blocked by:** 06
 
-**Status:** ready-for-agent
+**Status:** needs-info
 
 - [ ] Im Einrichtungs- und Optionsdialog eines Raums lassen sich null oder mehr Fensterkontakte wählen
 - [ ] Ein Kontakt, der kürzer als die Verzögerung offen ist, ändert nichts
@@ -41,3 +41,5 @@ Spec: `.scratch/heating-control/spec.md`
 Empfehlung: Option 2, weil sie Klartext und ruhiges Logbuch verbindet. Bitte entscheiden; ohne Rückmeldung bleibt Option 1.
 
 **Tests:** `tests/test_window_open.py` (Verzögerung, eigene Fenster-Verzögerung, kurzes Lüften, Wiederherstellung von Zeitplan-Stufe und Übersteuerung samt Rückfallzeitpunkt, Rückfall während offenem Fenster, Fenster über Aus, mehrere Kontakte, nicht erreichbare und unbekannte Kontakte, Grund mit minütlich steigender Dauer, Temperatur und Heizen bei offenem Fenster, Neuladen, Kontakte im Optionsdialog). Hilfe `WindowContact` in `tests/scenario.py`.
+
+**Zwischenstand:** Merge-Commit `3ae6257` auf `feat/heating-control` (121 Tests grün). Status `needs-info` wegen der Logbuch-Frage oben. Noch offen: Szenario „Drehung am Knopf bei offenem Fenster“ (kommt mit Ticket 08) und „Fenster schlägt Haus aus/Urlaub“ (kommt mit Ticket 12).
