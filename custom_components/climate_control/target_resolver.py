@@ -9,7 +9,7 @@ their place in the ranking of `resolve`.
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
 from enum import StrEnum
 from typing import Any
@@ -151,6 +151,25 @@ def mode_expires_at(
     if override_expiry.policy is OverrideExpiryPolicy.DURATION:
         return after_duration
     return _earliest(next_block_boundary, after_duration)
+
+
+def heat_temperature(snapshot: RoomSnapshot) -> float:
+    """Return the temperature heat without a temperature overrides with.
+
+    That is the current target; a room switched off instead heats to what auto
+    would heat to, so leaving off never holds frost protection.
+    """
+    decision = resolve(snapshot)
+    if decision.room_mode is not RoomMode.OFF:
+        return decision.target_temperature
+    return resolve(
+        replace(
+            snapshot,
+            room_mode=RoomMode.AUTO,
+            override_temperature=None,
+            mode_expires_at=None,
+        )
+    ).target_temperature
 
 
 def resolve(snapshot: RoomSnapshot) -> Decision:
