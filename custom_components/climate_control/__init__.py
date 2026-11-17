@@ -11,7 +11,13 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 
 from .command_pacer import CommandPacer
-from .const import CONF_AREA, CONF_PRESENCE_DELAY, CONF_PERSONS, DOMAIN, SUBENTRY_TYPE_ROOM
+from .const import (
+    CONF_AREA,
+    CONF_PERSONS,
+    CONF_PRESENCE_DELAY,
+    DOMAIN,
+    SUBENTRY_TYPE_ROOM,
+)
 from .house_mode import HouseModeController, async_remove_house_mode
 from .notifier import Notifier, async_remove_sent_alerts
 from .presence import Presence

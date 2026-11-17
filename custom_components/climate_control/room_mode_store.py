@@ -25,13 +25,13 @@ def _storage_key(entry_id: str) -> str:
 class RoomModeChoice:
     """Room mode chosen for a room, with override temperature and override expiry.
 
-    Heat carries `override_temperature`; heat and off end at `expires_at`
-    (None: no expiry).
+    Heat carries `override_temperature`; heat and off end at the
+    `override_expiry` (None: no expiry).
     """
 
     room_mode: RoomMode = RoomMode.AUTO
     override_temperature: float | None = None
-    expires_at: datetime | None = None
+    override_expiry: datetime | None = None
 
 
 class RoomModeStore:
@@ -68,11 +68,11 @@ class RoomModeStore:
         """Return the saved choice of a room; auto if nothing is saved."""
         if (saved := self._rooms.get(room_id)) is None:
             return RoomModeChoice()
-        expires_at = saved.get("expires_at")
+        expiry = saved.get("override_expiry")
         return RoomModeChoice(
             room_mode=RoomMode(saved["room_mode"]),
             override_temperature=saved.get("override_temperature"),
-            expires_at=dt_util.parse_datetime(expires_at) if expires_at else None,
+            override_expiry=dt_util.parse_datetime(expiry) if expiry else None,
         )
 
     async def async_save(self, room_id: str, choice: RoomModeChoice) -> None:
@@ -83,8 +83,10 @@ class RoomModeStore:
             self._rooms[room_id] = {
                 "room_mode": choice.room_mode.value,
                 "override_temperature": choice.override_temperature,
-                "expires_at": (
-                    choice.expires_at.isoformat() if choice.expires_at else None
+                "override_expiry": (
+                    choice.override_expiry.isoformat()
+                    if choice.override_expiry
+                    else None
                 ),
             }
         await self._async_write()

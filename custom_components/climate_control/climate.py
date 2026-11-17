@@ -90,7 +90,7 @@ class RoomClimate(ClimateEntity):
             ATTR_LEVEL: self._controller.level,
             ATTR_NEXT_BLOCK_BOUNDARY: self._controller.next_block_boundary,
             ATTR_REASON: reason.code if reason else None,
-            ATTR_OVERRIDE_EXPIRY: self._controller.mode_expires_at,
+            ATTR_OVERRIDE_EXPIRY: self._controller.override_expiry,
         }
 
     async def async_set_temperature(self, **kwargs: Any) -> None:

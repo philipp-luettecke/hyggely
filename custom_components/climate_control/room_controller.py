@@ -68,15 +68,15 @@ from .schedule_reader import ScheduleReader
 from .target_resolver import (
     Decision,
     Level,
-    OverrideExpiry,
     OverrideExpiryPolicy,
+    OverrideExpiryRule,
     Reason,
     RoomMode,
     RoomSnapshot,
     ScheduleLevel,
     TrvMode,
     heat_temperature,
-    mode_expires_at,
+    override_expiry_for,
     resolve,
 )
 from .trv_reachability import TrvReachability
@@ -85,7 +85,9 @@ from .window import WindowContacts
 RECENT_DECISIONS = 20
 
 
-def _override_expiry(entry: ConfigEntry, subentry: ConfigSubentry) -> OverrideExpiry:
+def _override_expiry_rule(
+    entry: ConfigEntry, subentry: ConfigSubentry
+) -> OverrideExpiryRule:
     """Return the override expiry rule of a room; room settings beat global ones."""
     policy = subentry.data.get(CONF_OVERRIDE_EXPIRY_POLICY, OVERRIDE_EXPIRY_GLOBAL)
     if policy == OVERRIDE_EXPIRY_GLOBAL:
@@ -93,7 +95,7 @@ def _override_expiry(entry: ConfigEntry, subentry: ConfigSubentry) -> OverrideEx
     duration = subentry.data.get(
         CONF_OVERRIDE_EXPIRY_DURATION, entry.options[CONF_OVERRIDE_EXPIRY_DURATION]
     )
-    return OverrideExpiry(
+    return OverrideExpiryRule(
         policy=OverrideExpiryPolicy(policy), duration=timedelta(**duration)
     )
 
@@ -176,7 +178,7 @@ class RoomController:
         self._frost_temperature = float(entry.options[CONF_FROST_TEMPERATURE])
         self._away_temperature = float(entry.options[CONF_AWAY_TEMPERATURE])
         self._vacation_temperature = float(entry.options[CONF_VACATION_TEMPERATURE])
-        self._override_expiry = _override_expiry(entry, subentry)
+        self._override_expiry_rule = _override_expiry_rule(entry, subentry)
         self._window = WindowContacts(
             hass,
             subentry.data.get(CONF_WINDOW_CONTACTS, []),
@@ -224,9 +226,9 @@ class RoomController:
         return self._next_block_boundary
 
     @property
-    def mode_expires_at(self) -> datetime | None:
-        """Return when the room returns to auto (override expiry)."""
-        return self._decision.mode_expires_at if self._decision else None
+    def override_expiry(self) -> datetime | None:
+        """Return when the room returns to auto."""
+        return self._decision.override_expiry if self._decision else None
 
     @property
     def reason(self) -> Reason | None:
@@ -340,11 +342,11 @@ class RoomController:
         self._choice = RoomModeChoice(
             room_mode=room_mode,
             override_temperature=temperature,
-            expires_at=mode_expires_at(
+            override_expiry=override_expiry_for(
                 room_mode,
                 now=dt_util.utcnow(),
                 next_block_boundary=schedule.next_block_boundary if schedule else None,
-                override_expiry=self._override_expiry,
+                rule=self._override_expiry_rule,
             ),
         )
         await self._room_modes.async_save(self.room_id, self._choice)
@@ -511,7 +513,7 @@ class RoomController:
             vacation_temperature=self._vacation_temperature,
             room_mode=self._choice.room_mode,
             override_temperature=self._choice.override_temperature,
-            mode_expires_at=self._choice.expires_at,
+            override_expiry=self._choice.override_expiry,
             away=self._presence.away,
             house_mode=self._house_mode.house_mode,
             vacation_end=self._house_mode.vacation_end,
