@@ -129,6 +129,9 @@ class RoomController:
     an invalid mode get nothing; once they take commands again they get the
     current target again, deviating or not. These resends and the first commands
     while Home Assistant starts go through the command pacer, one after another.
+    The override detector classifies what the TRVs report in between: an
+    external change becomes an override, or room off if the TRV was switched off;
+    a command the TRV did not take is sent once more.
     """
 
     def __init__(  # noqa: PLR0913
@@ -333,13 +336,19 @@ class RoomController:
         if decision is None or reported is None:
             return
         classification = self._detector.classify(
-            reported, target=_target_setting(decision)
+            trv, reported, target=_target_setting(decision), now=dt_util.utcnow()
         )
         if classification is Classification.EXTERNAL_CHANGE:
             self._entry.async_create_task(
                 self._hass,
                 self._async_take_external_change(reported),
                 f"take external change of {trv}",
+            )
+        elif classification is Classification.NOT_TAKEN:
+            self._entry.async_create_task(
+                self._hass,
+                self._async_repeat_command(trv),
+                f"repeat command to {trv}",
             )
 
     async def _async_take_external_change(self, setting: TrvSetting) -> None:
@@ -348,6 +357,13 @@ class RoomController:
             await self.async_set_room_mode(RoomMode.OFF)
         else:
             await self.async_set_override(setting.temperature)
+
+    async def _async_repeat_command(self, trv: str) -> None:
+        """Send the current decision to `trv` again; it did not take it."""
+        async with self._evaluation_lock:
+            decision = self._decision
+            if decision is not None and self._deviates(trv, decision):
+                await self._async_command(trv, decision, repeated=True)
 
     @callback
     def _trv_back(self, trv: str) -> None:
@@ -462,7 +478,15 @@ class RoomController:
             and state.attributes.get(ATTR_TEMPERATURE) != decision.target_temperature
         )
 
-    async def _async_command(self, trv: str, decision: Decision) -> None:
+    async def _async_command(
+        self, trv: str, decision: Decision, *, repeated: bool = False
+    ) -> None:
+        self._detector.command_sent(
+            trv,
+            before=_reported_setting(self._hass.states.get(trv)),
+            now=dt_util.utcnow(),
+            repeated=repeated,
+        )
         if decision.trv_mode is TrvMode.OFF:
             await self._hass.services.async_call(
                 CLIMATE_DOMAIN,

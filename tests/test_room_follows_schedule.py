@@ -137,12 +137,17 @@ async def test_trv_already_at_target_gets_no_command(
     schedules: Schedules,
     simulated_trvs: SimulatedTrvs,
 ) -> None:
-    """A TRV already heating to the target is left alone, also at boundaries."""
+    """A TRV already heating to the target is left alone, also at boundaries.
+
+    The knob turned to 17 °C at 08:30 overrides until 09:00, where eco is 17 °C.
+    """
     clock.set("2026-11-16 08:00")
     room = await living_room(hass, schedules, simulated_trvs, trv_temperature=21.0)
     assert commands(room.trv) == []
 
-    room.trv.report(target_temperature=17.0)
+    await clock.advance_to("2026-11-16 08:30:00")
+    room.trv.turn_knob(17.0)
+    await clock.advance_to("2026-11-16 08:31:00")
     await clock.advance_to("2026-11-16 09:00:00")
 
     assert room.state(hass).attributes["temperature"] == 17.0

@@ -272,7 +272,9 @@ class SimulatedTrv(ClimateEntity):
             self._set_sensor_available(False)
 
     def _report_device(self) -> None:
-        self.report(hvac_mode=self._device_mode, target_temperature=self._device_setpoint)
+        self.report(
+            hvac_mode=self._device_mode, target_temperature=self._device_setpoint
+        )
 
     def _set_sensor_available(self, available: bool) -> None:
         if self.temperature_sensor is not None:
