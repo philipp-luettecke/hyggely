@@ -10,7 +10,7 @@ Spec: `.scratch/heating-control/spec.md`
 
 **Blocked by:** 10, 13
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Nach 20 min offenem Fenster erhalten alle konfigurierten Empfänger genau eine Nachricht
 - [ ] Nach 30 min nicht erreichbarem TRV erhalten alle konfigurierten Empfänger genau eine Nachricht
@@ -38,3 +38,5 @@ Spec: `.scratch/heating-control/spec.md`
 **Neuladen und Neustart:** Gemeldete Ereignisse überstehen ein Neuladen des Eintrags (Optionsdialog, Raum ändern) über `hass.data`, damit es keine Wiederholung gibt. Nach einem Neustart von Home Assistant wird ein noch bestehendes Ereignis erneut gemeldet, sobald es wieder fällig ist: Fenster- und Offline-Dauer zählen ab dem Neustart (Ticket 10 und 13), also frühestens 20 bzw. 30 min danach. Das schien vertretbar und spart einen eigenen Speicher; sonst nachrüstbar.
 
 **Tests:** `tests/test_notifications.py` (Fenster nach 20 min an alle Empfänger, keine Wiederholung, TRV offline, Bridge-Ausfall, keine Meldung beim Auflösen, erneutes Eintreten von Fenster und TRV, Auflösen im Bündelungsfenster, Bündelung über mehrere Räume, getrennte Nachrichten, Ruhezeit mit Sammelnachricht um 7 Uhr, in der Nacht aufgelöstes Ereignis, Ruhezeit aus den Einstellungen, Englisch, Neuladen, geänderte Empfänger). Neue Test-Hilfe `tests/simulated_phone.py` (Fixture `phones`): Handys als echte `notify`-Entitäten mit Titel, wie die Companion App.
+
+**Abgeschlossen:** Merge-Commit `003d618` auf `feat/heating-control` (plus Lint-/Format-Korrektur in `notifier.py`). Ergebnis: Benachrichtigungen „Fenster seit 20 min offen“ und „TRV seit 30 min offline“, einmalig pro Ereignis, gebündelt (1 min), mit Ruhezeit und Sammelnachricht; 171 Tests grün.
