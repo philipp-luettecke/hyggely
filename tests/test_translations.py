@@ -75,7 +75,7 @@ ROOM_SETTINGS = [
 
 @pytest.mark.parametrize(
     ("language", "entry_type", "trv_label"),
-    [("en", "Room", "Radiator thermostat"), ("de", "Raum", "Heizkörperthermostat")],
+    [("en", "Room", "Radiator thermostats"), ("de", "Raum", "Heizkörperthermostate")],
 )
 async def test_room_dialogs_are_labelled_in_the_language(
     hass: HomeAssistant, language: str, entry_type: str, trv_label: str
@@ -87,6 +87,7 @@ async def test_room_dialogs_are_labelled_in_the_language(
 
     assert texts[f"{prefix}.entry_type"] == entry_type
     assert texts[f"{prefix}.initiate_flow.user"]
+    assert texts[f"{prefix}.error.no_trvs"]
     for step in ("user", "reconfigure"):
         assert texts[f"{prefix}.step.{step}.data.trvs"] == trv_label
         assert all(

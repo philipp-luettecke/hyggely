@@ -40,7 +40,7 @@ async def test_added_room_is_a_device_in_its_area_with_a_room_entity(
         hass,
         entry,
         name="Wohnzimmer",
-        trv=trv.entity_id,
+        trvs=[trv.entity_id],
         schedule=schedule,
         area=area.id,
     )

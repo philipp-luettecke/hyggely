@@ -73,7 +73,7 @@ async def _add_kitchen(
         hass,
         room.entry,
         name="Küche",
-        trv=trv.entity_id,
+        trvs=[trv.entity_id],
         schedule=schedule,
         area=area.id,
         comfort_temperature=20.0,

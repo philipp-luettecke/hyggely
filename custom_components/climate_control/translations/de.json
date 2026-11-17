@@ -83,7 +83,7 @@
           "description": "Gib nur die Raum-Thermostate an die HomeKit-Bridge, nicht die Heizkörperthermostate, damit Apple Home pro Raum nur ein Thermostat zeigt.",
           "data": {
             "name": "Name",
-            "trvs": "Heizkörperthermostat",
+            "trvs": "Heizkörperthermostate",
             "window_contacts": "Fensterkontakte",
             "schedule": "Zeitplan",
             "comfort_temperature": "Komfort-Temperatur",
@@ -95,7 +95,7 @@
             "override_expiry_duration": "Dauer der Übersteuerung"
           },
           "data_description": {
-            "trvs": "Das Heizkörperthermostat, das dieser Raum steuert.",
+            "trvs": "Die Heizkörperthermostate, die dieser Raum steuert. Alle erhalten denselben Sollwert; der Raum zeigt den Mittelwert ihrer Ist-Temperaturen.",
             "window_contacts": "Ist einer dieser Kontakte länger als die Fenster-Verzögerung offen, erhält der Raum Frostschutz. Ein nicht erreichbarer Kontakt gilt als geschlossen.",
             "schedule": "Zeitplan-Helfer des Raums. Während eines Blocks gilt seine Stufe (Komfort oder Nacht, ohne Angabe Komfort), sonst Eco.",
             "comfort_temperature": "Solltemperatur während eines Blocks mit Stufe Komfort oder ohne Stufe.",
@@ -111,7 +111,7 @@
           "title": "Raum ändern",
           "data": {
             "name": "Name",
-            "trvs": "Heizkörperthermostat",
+            "trvs": "Heizkörperthermostate",
             "window_contacts": "Fensterkontakte",
             "schedule": "Zeitplan",
             "comfort_temperature": "Komfort-Temperatur",
@@ -123,7 +123,7 @@
             "override_expiry_duration": "Dauer der Übersteuerung"
           },
           "data_description": {
-            "trvs": "Das Heizkörperthermostat, das dieser Raum steuert.",
+            "trvs": "Die Heizkörperthermostate, die dieser Raum steuert. Alle erhalten denselben Sollwert; der Raum zeigt den Mittelwert ihrer Ist-Temperaturen.",
             "window_contacts": "Ist einer dieser Kontakte länger als die Fenster-Verzögerung offen, erhält der Raum Frostschutz. Ein nicht erreichbarer Kontakt gilt als geschlossen.",
             "schedule": "Zeitplan-Helfer des Raums. Während eines Blocks gilt seine Stufe (Komfort oder Nacht, ohne Angabe Komfort), sonst Eco.",
             "comfort_temperature": "Solltemperatur während eines Blocks mit Stufe Komfort oder ohne Stufe.",
@@ -135,6 +135,9 @@
             "override_expiry_duration": "Leer lassen, um die globale Dauer der Übersteuerung zu verwenden."
           }
         }
+      },
+      "error": {
+        "no_trvs": "Wähle mindestens ein Heizkörperthermostat."
       },
       "abort": {
         "reconfigure_successful": "Der Raum wurde geändert."

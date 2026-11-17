@@ -123,7 +123,7 @@ def _room_schema() -> probatio.Schema:
         {
             probatio.Required(CONF_NAME): selector.TextSelector(),
             probatio.Required(CONF_TRVS): selector.EntitySelector(
-                selector.EntitySelectorConfig(domain="climate")
+                selector.EntitySelectorConfig(domain="climate", multiple=True)
             ),
             probatio.Optional(
                 CONF_WINDOW_CONTACTS, default=[]
@@ -162,10 +162,13 @@ def _room_schema() -> probatio.Schema:
 
 
 def _room_data(user_input: dict[str, Any]) -> dict[str, Any]:
-    """Store the room settings; a room keeps a list of TRVs."""
-    data = {key: value for key, value in user_input.items() if key != CONF_NAME}
-    data[CONF_TRVS] = [user_input[CONF_TRVS]]
-    return data
+    """Store the room settings; the name is the title of the room."""
+    return {key: value for key, value in user_input.items() if key != CONF_NAME}
+
+
+def _room_errors(user_input: dict[str, Any]) -> dict[str, str]:
+    """Return what keeps the room settings from being stored; a room needs a TRV."""
+    return {} if user_input[CONF_TRVS] else {CONF_TRVS: "no_trvs"}
 
 
 class RoomSubentryFlow(ConfigSubentryFlow):
@@ -175,32 +178,39 @@ class RoomSubentryFlow(ConfigSubentryFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
         """Ask for the settings of a new room."""
+        errors: dict[str, str] = {}
         if user_input is not None:
-            return self.async_create_entry(
-                title=user_input[CONF_NAME], data=_room_data(user_input)
-            )
-        return self.async_show_form(step_id="user", data_schema=_room_schema())
+            if not (errors := _room_errors(user_input)):
+                return self.async_create_entry(
+                    title=user_input[CONF_NAME], data=_room_data(user_input)
+                )
+        return self.async_show_form(
+            step_id="user",
+            data_schema=self.add_suggested_values_to_schema(
+                _room_schema(), user_input or {}
+            ),
+            errors=errors,
+        )
 
     async def async_step_reconfigure(
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
         """Show the room settings prefilled with the current values."""
         subentry = self._get_reconfigure_subentry()
+        errors: dict[str, str] = {}
         if user_input is not None:
-            return self.async_update_and_abort(
-                self._get_entry(),
-                subentry,
-                title=user_input[CONF_NAME],
-                data=_room_data(user_input),
-            )
-        current = {
-            **subentry.data,
-            CONF_NAME: subentry.title,
-            CONF_TRVS: subentry.data[CONF_TRVS][0],
-        }
+            if not (errors := _room_errors(user_input)):
+                return self.async_update_and_abort(
+                    self._get_entry(),
+                    subentry,
+                    title=user_input[CONF_NAME],
+                    data=_room_data(user_input),
+                )
+        current = user_input or {**subentry.data, CONF_NAME: subentry.title}
         return self.async_show_form(
             step_id="reconfigure",
             data_schema=self.add_suggested_values_to_schema(_room_schema(), current),
+            errors=errors,
         )
 
 

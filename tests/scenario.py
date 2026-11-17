@@ -133,7 +133,7 @@ def room_settings(subentry: ConfigSubentry) -> dict[str, Any]:
     optional = ("window_contacts", "override_expiry_policy", "override_expiry_duration")
     return {
         "name": subentry.title,
-        "trvs": subentry.data["trvs"][0],
+        "trvs": subentry.data["trvs"],
         "schedule": subentry.data["schedule"],
         "comfort_temperature": subentry.data["comfort_temperature"],
         "night_temperature": subentry.data["night_temperature"],
@@ -149,7 +149,7 @@ async def add_room(
     entry: ConfigEntry,
     *,
     name: str,
-    trv: str,
+    trvs: list[str],
     schedule: str,
     area: str,
     comfort_temperature: float = 21.0,
@@ -168,7 +168,7 @@ async def add_room(
         result["flow_id"],
         {
             "name": name,
-            "trvs": trv,
+            "trvs": trvs,
             **contacts,
             "schedule": schedule,
             "comfort_temperature": comfort_temperature,
@@ -274,7 +274,7 @@ async def living_room(
         hass,
         entry,
         name="Wohnzimmer",
-        trv=trv.entity_id,
+        trvs=[trv.entity_id],
         schedule=schedule,
         area=area.id,
         comfort_temperature=21.0,

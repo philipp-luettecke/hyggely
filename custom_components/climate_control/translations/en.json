@@ -83,7 +83,7 @@
           "description": "Only give the room thermostats to the HomeKit Bridge, not the TRVs, so that Apple Home shows a single thermostat per room.",
           "data": {
             "name": "Name",
-            "trvs": "Radiator thermostat",
+            "trvs": "Radiator thermostats",
             "window_contacts": "Window contacts",
             "schedule": "Schedule",
             "comfort_temperature": "Comfort temperature",
@@ -95,7 +95,7 @@
             "override_expiry_duration": "Override duration"
           },
           "data_description": {
-            "trvs": "The radiator thermostat (TRV) this room controls.",
+            "trvs": "The radiator thermostats (TRVs) this room controls. All of them get the same target; the room shows the mean of their current temperatures.",
             "window_contacts": "While one of these contacts is open for longer than the window delay, the room gets frost protection. An unreachable contact counts as closed.",
             "schedule": "Schedule helper of the room. During a block its level applies (comfort or night, comfort if none is set), eco outside.",
             "comfort_temperature": "Target temperature during a block with level comfort or without a level.",
@@ -111,7 +111,7 @@
           "title": "Change room",
           "data": {
             "name": "Name",
-            "trvs": "Radiator thermostat",
+            "trvs": "Radiator thermostats",
             "window_contacts": "Window contacts",
             "schedule": "Schedule",
             "comfort_temperature": "Comfort temperature",
@@ -123,7 +123,7 @@
             "override_expiry_duration": "Override duration"
           },
           "data_description": {
-            "trvs": "The radiator thermostat (TRV) this room controls.",
+            "trvs": "The radiator thermostats (TRVs) this room controls. All of them get the same target; the room shows the mean of their current temperatures.",
             "window_contacts": "While one of these contacts is open for longer than the window delay, the room gets frost protection. An unreachable contact counts as closed.",
             "schedule": "Schedule helper of the room. During a block its level applies (comfort or night, comfort if none is set), eco outside.",
             "comfort_temperature": "Target temperature during a block with level comfort or without a level.",
@@ -135,6 +135,9 @@
             "override_expiry_duration": "Leave empty to use the global override duration."
           }
         }
+      },
+      "error": {
+        "no_trvs": "Choose at least one radiator thermostat."
       },
       "abort": {
         "reconfigure_successful": "The room was changed."
