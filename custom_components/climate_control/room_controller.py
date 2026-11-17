@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Callable
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from homeassistant.components.climate import (
     ATTR_CURRENT_TEMPERATURE,
@@ -37,6 +37,8 @@ from .const import (
     CONF_COMFORT_TEMPERATURE,
     CONF_ECO_TEMPERATURE,
     CONF_FROST_TEMPERATURE,
+    CONF_OVERRIDE_EXPIRY_DURATION,
+    CONF_OVERRIDE_EXPIRY_POLICY,
     CONF_SCHEDULE,
     CONF_TRVS,
 )
@@ -44,9 +46,12 @@ from .schedule_reader import ScheduleReader
 from .target_resolver import (
     Decision,
     Level,
+    OverrideExpiry,
+    OverrideExpiryPolicy,
     RoomMode,
     RoomSnapshot,
     TrvMode,
+    mode_expires_at,
     resolve,
 )
 
@@ -74,6 +79,10 @@ class RoomController:
             Level.ECO: float(subentry.data[CONF_ECO_TEMPERATURE]),
         }
         self._frost_temperature = float(entry.options[CONF_FROST_TEMPERATURE])
+        self._override_expiry = OverrideExpiry(
+            policy=OverrideExpiryPolicy(entry.options[CONF_OVERRIDE_EXPIRY_POLICY]),
+            duration=timedelta(**entry.options[CONF_OVERRIDE_EXPIRY_DURATION]),
+        )
         self._room_mode = RoomMode.AUTO
         self._override_temperature: float | None = None
         self._mode_expires_at: datetime | None = None
@@ -92,6 +101,11 @@ class RoomController:
     def target_temperature(self) -> float | None:
         """Return the target temperature of the room."""
         return self._decision.target_temperature if self._decision else None
+
+    @property
+    def mode_expires_at(self) -> datetime | None:
+        """Return when the room returns to auto (override expiry)."""
+        return self._decision.mode_expires_at if self._decision else None
 
     @property
     def current_temperature(self) -> float | None:
@@ -122,7 +136,7 @@ class RoomController:
         await self._async_evaluate()
 
     async def async_set_override(self, temperature: float) -> None:
-        """Heat to `temperature` until the next block boundary."""
+        """Heat to `temperature` until the override expiry."""
         self._set_room_mode(RoomMode.HEAT, temperature)
         await self._async_evaluate()
 
@@ -138,11 +152,15 @@ class RoomController:
 
     @callback
     def _set_room_mode(self, room_mode: RoomMode, temperature: float | None) -> None:
+        schedule = self._schedule.read()
         self._room_mode = room_mode
         self._override_temperature = temperature
-        self._mode_expires_at = None
-        if room_mode is not RoomMode.AUTO and (schedule := self._schedule.read()):
-            self._mode_expires_at = schedule.next_block_boundary
+        self._mode_expires_at = mode_expires_at(
+            room_mode,
+            now=dt_util.utcnow(),
+            next_block_boundary=schedule.next_block_boundary if schedule else None,
+            override_expiry=self._override_expiry,
+        )
 
     @callback
     def async_stop(self) -> None:

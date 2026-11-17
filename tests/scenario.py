@@ -26,6 +26,11 @@ DOMAIN = "climate_control"
 TIME_ZONE = "Europe/Berlin"
 
 
+def local(local_time: str) -> datetime:
+    """Return a moment in local time (Europe/Berlin), e.g. `2026-11-16 08:00`."""
+    return datetime.fromisoformat(local_time).replace(tzinfo=ZoneInfo(TIME_ZONE))
+
+
 class Clock:
     """Wall clock of the test Home Assistant in local time (Europe/Berlin)."""
 
@@ -36,9 +41,7 @@ class Clock:
 
     def set(self, local_time: str) -> None:
         """Set the time without firing timers, e.g. `2026-11-16 08:00`."""
-        self._freezer.move_to(
-            datetime.fromisoformat(local_time).replace(tzinfo=ZoneInfo(TIME_ZONE))
-        )
+        self._freezer.move_to(local(local_time))
 
     async def advance_to(self, local_time: str) -> None:
         """Move the time forward and run everything that became due."""
@@ -93,19 +96,46 @@ class Schedules:
         return result
 
 
-async def add_main_entry(hass: HomeAssistant) -> ConfigEntry:
-    """Set up the main entry with the default global settings."""
+async def add_main_entry(hass: HomeAssistant, **settings: Any) -> ConfigEntry:
+    """Set up the main entry; global settings left out keep their defaults."""
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": SOURCE_USER}
     )
-    result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], settings
+    )
     await hass.async_block_till_done()
     entry: ConfigEntry = result["result"]
     return entry
 
 
+async def change_global_settings(
+    hass: HomeAssistant, entry: ConfigEntry, **changes: Any
+) -> None:
+    """Change global settings in the options dialog of the main entry."""
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {**entry.options, **changes}
+    )
+    await hass.async_block_till_done()
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+
+
+async def shut_down(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Stop the integration as Home Assistant does when it shuts down."""
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+
+
+async def start_up(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Start the integration as Home Assistant does when it starts."""
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+
 def room_settings(subentry: ConfigSubentry) -> dict[str, Any]:
     """Return the values of the room dialog as currently configured."""
+    optional = ("override_expiry_policy", "override_expiry_duration")
     return {
         "name": subentry.title,
         "trvs": subentry.data["trvs"][0],
@@ -113,6 +143,7 @@ def room_settings(subentry: ConfigSubentry) -> dict[str, Any]:
         "comfort_temperature": subentry.data["comfort_temperature"],
         "eco_temperature": subentry.data["eco_temperature"],
         "area": subentry.data["area"],
+        **{key: subentry.data[key] for key in optional if key in subentry.data},
     }
 
 
@@ -179,6 +210,16 @@ class LivingRoom:
         assert state is not None
         return state
 
+    async def call(self, hass: HomeAssistant, service: str, **data: Any) -> None:
+        """Call a `climate` action on the room entity, e.g. from Siri or the app."""
+        await hass.services.async_call(
+            "climate",
+            service,
+            {"entity_id": self.entity_id(hass), **data},
+            blocking=True,
+        )
+        await hass.async_block_till_done()
+
 
 async def living_room(
     hass: HomeAssistant,
@@ -188,6 +229,7 @@ async def living_room(
     trv_mode: str = "heat",
     trv_temperature: float = 15.0,
     current_temperature: float = 19.5,
+    global_settings: dict[str, Any] | None = None,
 ) -> LivingRoom:
     """Add the living room with comfort 21 °C and eco 17 °C."""
     schedule = await schedules.create("Wohnzimmer", monday=[block("07:00", "09:00")])
@@ -198,7 +240,7 @@ async def living_room(
         current_temperature=current_temperature,
     )
     area = ar.async_get(hass).async_create("Wohnzimmer")
-    entry = await add_main_entry(hass)
+    entry = await add_main_entry(hass, **(global_settings or {}))
     subentry = await add_room(
         hass,
         entry,

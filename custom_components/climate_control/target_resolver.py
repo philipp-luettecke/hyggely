@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import StrEnum
 from typing import Any
 
@@ -35,6 +35,22 @@ class TrvMode(StrEnum):
 
     HEAT = "heat"
     OFF = "off"
+
+
+class OverrideExpiryPolicy(StrEnum):
+    """When an override returns to auto."""
+
+    NEXT_BLOCK = "next_block"
+    DURATION = "duration"
+    EARLIEST = "earliest"
+
+
+@dataclass(frozen=True, kw_only=True)
+class OverrideExpiry:
+    """Override expiry rule of a room."""
+
+    policy: OverrideExpiryPolicy
+    duration: timedelta
 
 
 class ReasonCode(StrEnum):
@@ -87,6 +103,31 @@ class Decision:
     trv_mode: TrvMode
     reason: Reason
     reevaluate_at: datetime | None
+    mode_expires_at: datetime | None = None
+
+
+def mode_expires_at(
+    room_mode: RoomMode,
+    *,
+    now: datetime,
+    next_block_boundary: datetime | None,
+    override_expiry: OverrideExpiry,
+) -> datetime | None:
+    """Return when a room mode chosen at `now` returns to auto (None: never).
+
+    Off always returns at the next block boundary; heat follows the override
+    expiry rule.
+    """
+    if room_mode is RoomMode.AUTO:
+        return None
+    if room_mode is RoomMode.OFF or override_expiry.policy is (
+        OverrideExpiryPolicy.NEXT_BLOCK
+    ):
+        return next_block_boundary
+    after_duration = now + override_expiry.duration
+    if override_expiry.policy is OverrideExpiryPolicy.DURATION:
+        return after_duration
+    return _earliest(next_block_boundary, after_duration)
 
 
 def resolve(snapshot: RoomSnapshot) -> Decision:
@@ -105,6 +146,7 @@ def resolve(snapshot: RoomSnapshot) -> Decision:
             trv_mode=TrvMode.OFF,
             reason=Reason(code=ReasonCode.ROOM_OFF, params={"until": expires_at}),
             reevaluate_at=reevaluate_at,
+            mode_expires_at=expires_at,
         )
     if room_mode is RoomMode.HEAT and snapshot.override_temperature is not None:
         return Decision(
@@ -113,6 +155,7 @@ def resolve(snapshot: RoomSnapshot) -> Decision:
             trv_mode=TrvMode.HEAT,
             reason=Reason(code=ReasonCode.OVERRIDE, params={"until": expires_at}),
             reevaluate_at=reevaluate_at,
+            mode_expires_at=expires_at,
         )
     return Decision(
         room_mode=RoomMode.AUTO,
