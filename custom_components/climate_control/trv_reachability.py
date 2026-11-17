@@ -33,7 +33,9 @@ class TrvReachability:
     device is unavailable: on a bridge outage the climate entity of a tado TRV
     only freezes with its old values (ticket 01). A TRV takes commands while it is
     reachable and reports a valid mode. A TRV that could not take commands is
-    handed to `on_back` as soon as it can again. A TRV unreachable for longer than
+    handed to `on_back` as soon as it can again. A new state of a TRV that took
+    commands before and still does goes to `on_report`; frozen values and the
+    return from an outage never do. A TRV unreachable for longer than
     `OFFLINE_AFTER` is offline; `on_offline_changed` reports changes.
     """
 
@@ -43,6 +45,7 @@ class TrvReachability:
         trvs: list[str],
         *,
         on_back: Callable[[str], None],
+        on_report: Callable[[str], None],
         on_offline_changed: Callable[[], None],
     ) -> None:
         """Find the temperature sensor on the device of each TRV."""
@@ -52,6 +55,7 @@ class TrvReachability:
             sensor: trv for trv, sensor in self._sensors.items() if sensor is not None
         }
         self._on_back = on_back
+        self._on_report = on_report
         self._on_offline_changed = on_offline_changed
         self._missed: set[str] = set()
         self._offline: frozenset[str] = frozenset()
@@ -90,12 +94,15 @@ class TrvReachability:
 
     @callback
     def _changed(self, event: Event[EventStateChangedData]) -> None:
-        trv = self._trv_of[event.data["entity_id"]]
+        entity_id = event.data["entity_id"]
+        trv = self._trv_of[entity_id]
         if not self.takes_commands(trv):
             self._missed.add(trv)
         elif trv in self._missed:
             self._missed.discard(trv)
             self._on_back(trv)
+        elif entity_id == trv:
+            self._on_report(trv)
         self._update_offline()
 
     @callback

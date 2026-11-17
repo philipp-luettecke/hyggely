@@ -29,6 +29,7 @@ from homeassistant.core import (
     Event,
     EventStateChangedData,
     HomeAssistant,
+    State,
     callback,
 )
 from homeassistant.helpers import entity_registry as er
@@ -62,6 +63,7 @@ from .const import (
     OVERRIDE_EXPIRY_GLOBAL,
     room_entity_unique_id,
 )
+from .override_detector import Classification, OverrideDetector, TrvSetting
 from .presence import Presence
 from .room_mode_store import RoomModeChoice, RoomModeStore
 from .schedule_reader import ScheduleReader
@@ -93,6 +95,29 @@ def _override_expiry(entry: ConfigEntry, subentry: ConfigSubentry) -> OverrideEx
     return OverrideExpiry(
         policy=OverrideExpiryPolicy(policy), duration=timedelta(**duration)
     )
+
+
+def _target_setting(decision: Decision) -> TrvSetting:
+    """Return the setting the TRVs get for `decision`."""
+    if decision.trv_mode is TrvMode.OFF:
+        return TrvSetting(mode=TrvMode.OFF)
+    return TrvSetting(mode=TrvMode.HEAT, temperature=decision.target_temperature)
+
+
+def _reported_setting(state: State | None) -> TrvSetting | None:
+    """Return the setting a TRV state shows; None for an invalid one.
+
+    An off tado TRV reports no temperature and the 7-35 range (ticket 01); off
+    compares by mode only.
+    """
+    if state is None:
+        return None
+    if state.state == TrvMode.OFF:
+        return TrvSetting(mode=TrvMode.OFF)
+    temperature = state.attributes.get(ATTR_TEMPERATURE)
+    if state.state != TrvMode.HEAT or not isinstance(temperature, int | float):
+        return None
+    return TrvSetting(mode=TrvMode.HEAT, temperature=float(temperature))
 
 
 class RoomController:
@@ -157,10 +182,12 @@ class RoomController:
         self._unsubscribers: list[CALLBACK_TYPE] = []
         self._cancel_reevaluation: CALLBACK_TYPE | None = None
         self._evaluation_lock = asyncio.Lock()
+        self._detector = OverrideDetector()
         self._reachability = TrvReachability(
             hass,
             self._trvs,
             on_back=self._trv_back,
+            on_report=self._trv_reported,
             on_offline_changed=self._notify_listeners,
         )
 
@@ -297,6 +324,30 @@ class RoomController:
     @callback
     def _trv_changed(self, _event: Event[EventStateChangedData]) -> None:
         self._notify_listeners()
+
+    @callback
+    def _trv_reported(self, trv: str) -> None:
+        """Turn an external change at `trv`, e.g. a knob turn, into a room mode."""
+        decision = self._decision
+        reported = _reported_setting(self._hass.states.get(trv))
+        if decision is None or reported is None:
+            return
+        classification = self._detector.classify(
+            reported, target=_target_setting(decision)
+        )
+        if classification is Classification.EXTERNAL_CHANGE:
+            self._entry.async_create_task(
+                self._hass,
+                self._async_take_external_change(reported),
+                f"take external change of {trv}",
+            )
+
+    async def _async_take_external_change(self, setting: TrvSetting) -> None:
+        """Switched off at the TRV means room off, anything else an override."""
+        if setting.mode is TrvMode.OFF or setting.temperature is None:
+            await self.async_set_room_mode(RoomMode.OFF)
+        else:
+            await self.async_set_override(setting.temperature)
 
     @callback
     def _trv_back(self, trv: str) -> None:
