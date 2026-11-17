@@ -107,3 +107,22 @@ async def test_override_expiry_policies_are_labelled_in_the_language(
     assert texts[f"{prefix}.earliest"] == earliest_label
     assert texts[f"{prefix}.next_block"]
     assert texts[f"{prefix}.duration"]
+
+
+@pytest.mark.parametrize(
+    ("language", "title"),
+    [
+        ("en", "Radiator thermostat {trv} unreachable"),
+        ("de", "Heizkörperthermostat {trv} nicht erreichbar"),
+    ],
+)
+async def test_offline_trv_repair_issue_is_worded_in_the_language(
+    hass: HomeAssistant, language: str, title: str
+) -> None:
+    """The repair issue of an offline TRV has a title and a description."""
+    prefix = f"component.{DOMAIN}.issues.trv_offline"
+
+    texts = await async_get_translations(hass, language, "issues", [DOMAIN])
+
+    assert texts[f"{prefix}.title"] == title
+    assert "{room}" in texts[f"{prefix}.description"]

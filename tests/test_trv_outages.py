@@ -5,7 +5,7 @@ only the temperature sensor of its device becomes unavailable.
 """
 
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import area_registry as ar
+from homeassistant.helpers import area_registry as ar, issue_registry as ir
 
 from tests.scenario import (
     HEAT_21,
@@ -149,3 +149,75 @@ async def test_trv_without_temperature_sensor_counts_only_its_climate_entity(
     trv.set_available(True)
     await hass.async_block_till_done()
     assert commands(trv) == [HEAT_21]
+
+
+def _repair_issues(issue_registry: ir.IssueRegistry) -> list[ir.IssueEntry]:
+    return [
+        issue
+        for (domain, _), issue in issue_registry.issues.items()
+        if domain == "climate_control"
+    ]
+
+
+async def test_trv_unreachable_for_30_minutes_appears_under_repairs_until_it_returns(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+    issue_registry: ir.IssueRegistry,
+) -> None:
+    """One repair issue per TRV after 30 min unreachable, gone when it is back."""
+    clock.set("2026-11-16 12:00")
+    room = await living_room(hass, schedules, simulated_trvs)
+    clock.set("2026-11-16 12:00:30")
+    room.trv.unplug_bridge()
+    await clock.advance_to("2026-11-16 12:01:00")
+    await clock.advance_to("2026-11-16 12:02:00")
+
+    await clock.advance_to("2026-11-16 12:31:59")
+    assert _repair_issues(issue_registry) == []
+
+    await clock.advance_to("2026-11-16 12:32:00")
+    [issue] = _repair_issues(issue_registry)
+    assert issue.translation_key == "trv_offline"
+    assert issue.translation_placeholders == {
+        "trv": "trv_wohnzimmer",
+        "room": "Wohnzimmer",
+    }
+    assert issue.severity is ir.IssueSeverity.WARNING
+    assert not issue.is_fixable
+
+    await clock.advance_to("2026-11-16 13:00:00")
+    assert len(_repair_issues(issue_registry)) == 1
+
+    clock.set("2026-11-16 13:00:30")
+    room.trv.plug_in_bridge()
+    await clock.advance_to("2026-11-16 13:01:00")
+    await clock.advance_to("2026-11-16 13:02:00")
+    assert _repair_issues(issue_registry) == []
+
+
+async def test_repair_issue_is_raised_again_when_the_trv_drops_out_again(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+    issue_registry: ir.IssueRegistry,
+) -> None:
+    """A TRV that returns and fails again needs another 30 minutes."""
+    clock.set("2026-11-16 12:00")
+    room = await living_room(hass, schedules, simulated_trvs)
+    room.trv.set_available(False)
+    await clock.advance_to("2026-11-16 12:30:00")
+    assert len(_repair_issues(issue_registry)) == 1
+
+    room.trv.set_available(True)
+    await hass.async_block_till_done()
+    assert _repair_issues(issue_registry) == []
+
+    clock.set("2026-11-16 12:40:00")
+    room.trv.set_available(False)
+    await clock.advance_to("2026-11-16 13:09:59")
+    assert _repair_issues(issue_registry) == []
+    await clock.advance_to("2026-11-16 13:10:00")
+    assert len(_repair_issues(issue_registry)) == 1

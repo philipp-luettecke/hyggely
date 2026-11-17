@@ -10,6 +10,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 
 from .const import CONF_AREA, DOMAIN, SUBENTRY_TYPE_ROOM
+from .repair_issues import async_track_offline_trvs
 from .room_controller import RoomController
 
 PLATFORMS = [Platform.CLIMATE]
@@ -40,6 +41,7 @@ async def async_setup_entry(
 
     for controller in entry.runtime_data.rooms.values():
         entry.async_on_unload(controller.async_stop)
+        entry.async_on_unload(async_track_offline_trvs(hass, entry, controller))
         await controller.async_start()
 
     entry.async_on_unload(entry.add_update_listener(_async_reload))
