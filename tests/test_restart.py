@@ -1,10 +1,11 @@
 """After a restart of Home Assistant the TRVs are commanded one after another."""
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import CoreState, HomeAssistant
-from homeassistant.helpers import area_registry as ar
+from homeassistant.core import CoreState, HomeAssistant, State
+from homeassistant.helpers import area_registry as ar, entity_registry as er
 
 from tests.scenario import (
+    DOMAIN,
     HEAT_21,
     Clock,
     Schedules,
@@ -66,6 +67,41 @@ async def test_trvs_get_their_targets_two_seconds_apart_after_a_restart(
     assert _commanded(trvs) == 2
     await clock.advance_to("2026-11-16 07:30:04")
     assert _commanded(trvs) == 3
+
+
+async def test_trv_reporting_before_its_turn_after_a_restart_is_no_override(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+) -> None:
+    """The dining room TRV still at 17 °C reports 18 °C in the room before its turn."""
+    clock.set("2026-11-16 06:00")
+    entry, trvs = await _three_rooms(hass, schedules, simulated_trvs)
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await clock.advance_to("2026-11-16 07:30:00")
+    hass.set_state(CoreState.starting)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    await clock.advance_to("2026-11-16 07:30:01")
+    trvs[2].report(current_temperature=18.0)
+    await clock.advance_to("2026-11-16 07:30:04")
+
+    assert _commanded(trvs) == 3
+    assert [state.state for state in _room_states(hass)] == ["auto"] * 3
+    assert [state.attributes["temperature"] for state in _room_states(hass)] == [
+        21.0
+    ] * 3
+
+
+def _room_states(hass: HomeAssistant) -> list[State]:
+    states = [
+        hass.states.get(entity.entity_id)
+        for entity in er.async_get(hass).entities.values()
+        if entity.platform == DOMAIN and entity.domain == "climate"
+    ]
+    return [state for state in states if state is not None]
 
 
 async def test_trvs_returning_together_get_their_targets_two_seconds_apart(
