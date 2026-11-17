@@ -15,6 +15,8 @@ from tests.scenario import (
     add_main_entry,
     add_room,
     block,
+    change_global_settings,
+    duration,
 )
 from tests.simulated_phone import Message, SimulatedPhone, SimulatedPhones
 from tests.simulated_trv import SimulatedTrv, SimulatedTrvs
@@ -90,3 +92,360 @@ async def test_window_open_for_20_minutes_notifies_every_recipient_once(
     expected = [Message(TITLE, "Fenster seit über 20 min offen: Wohnzimmer")]
     assert house.anna.messages == expected
     assert house.ben.messages == expected
+
+
+async def test_window_still_open_hours_later_is_not_reported_again(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+    phones: SimulatedPhones,
+) -> None:
+    """A window forgotten for the afternoon gives one message, not one per check."""
+    clock.set("2026-11-16 12:00")
+    house = await _house(hass, schedules, simulated_trvs, phones)
+    await house.windows["Wohnzimmer"].open()
+    for moment in ("12:01", "12:20", "12:21", "13:00", "16:00", "18:30"):
+        await clock.advance_to(f"2026-11-16 {moment}:00")
+
+    assert len(house.anna.messages) == 1
+
+
+async def test_trv_offline_for_30_minutes_notifies_every_recipient_once(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+    phones: SimulatedPhones,
+) -> None:
+    """Unreachable from 12:00, offline at 12:30, one message each, no repetition."""
+    clock.set("2026-11-16 12:00")
+    house = await _house(hass, schedules, simulated_trvs, phones)
+
+    house.trvs["Wohnzimmer"].set_available(False)
+    await clock.advance_to("2026-11-16 12:30:00")
+    await clock.advance_to("2026-11-16 12:30:59")
+    assert house.anna.messages == []
+
+    await clock.advance_to("2026-11-16 12:31:00")
+    await clock.advance_to("2026-11-16 15:00:00")
+
+    expected = [
+        Message(
+            TITLE,
+            "Heizkörperthermostat seit über 30 min nicht erreichbar: "
+            "trv_wohnzimmer (Wohnzimmer)",
+        )
+    ]
+    assert house.anna.messages == expected
+    assert house.ben.messages == expected
+
+
+async def test_bridge_outage_is_reported_like_an_unreachable_trv(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+    phones: SimulatedPhones,
+) -> None:
+    """The temperature sensor is gone from 12:02, so the TRV is offline at 12:32."""
+    clock.set("2026-11-16 12:00:30")
+    house = await _house(hass, schedules, simulated_trvs, phones)
+
+    house.trvs["Wohnzimmer"].unplug_bridge()
+    for moment in ("12:01", "12:02", "12:32", "12:33"):
+        await clock.advance_to(f"2026-11-16 {moment}:00")
+
+    assert len(house.anna.messages) == 1
+
+
+async def test_closing_the_window_sends_no_message_and_opening_it_again_does(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+    phones: SimulatedPhones,
+) -> None:
+    """Reported at 12:21, closed at 12:30, open again from 12:40: reported at 13:01."""
+    clock.set("2026-11-16 12:00")
+    house = await _house(hass, schedules, simulated_trvs, phones)
+    window = house.windows["Wohnzimmer"]
+    await window.open()
+    for moment in ("12:01", "12:20", "12:21"):
+        await clock.advance_to(f"2026-11-16 {moment}:00")
+
+    await clock.advance_to("2026-11-16 12:30:00")
+    await window.close()
+    await clock.advance_to("2026-11-16 12:40:00")
+    assert len(house.anna.messages) == 1
+
+    await window.open()
+    for moment in ("12:41", "13:00", "13:01"):
+        await clock.advance_to(f"2026-11-16 {moment}:00")
+
+    assert house.anna.messages == [
+        Message(TITLE, "Fenster seit über 20 min offen: Wohnzimmer")
+    ] * 2
+
+
+async def test_window_closed_before_the_message_goes_out_is_not_reported(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+    phones: SimulatedPhones,
+) -> None:
+    """Closed within the bundling window after 20 min, nothing is sent."""
+    clock.set("2026-11-16 12:00")
+    house = await _house(hass, schedules, simulated_trvs, phones)
+    await house.windows["Wohnzimmer"].open()
+    for moment in ("12:01:00", "12:20:00", "12:20:30"):
+        await clock.advance_to(f"2026-11-16 {moment}")
+
+    await house.windows["Wohnzimmer"].close()
+    await clock.advance_to("2026-11-16 12:30:00")
+
+    assert house.anna.messages == []
+
+
+async def test_trv_back_sends_no_message_and_dropping_out_again_is_reported_again(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+    phones: SimulatedPhones,
+) -> None:
+    """No "back online" message; another 30 min offline gives another message."""
+    clock.set("2026-11-16 12:00")
+    house = await _house(hass, schedules, simulated_trvs, phones)
+    trv = house.trvs["Wohnzimmer"]
+    trv.set_available(False)
+    await clock.advance_to("2026-11-16 12:30:00")
+    await clock.advance_to("2026-11-16 12:31:00")
+
+    trv.set_available(True)
+    await clock.advance_to("2026-11-16 12:40:00")
+    assert len(house.anna.messages) == 1
+
+    trv.set_available(False)
+    await clock.advance_to("2026-11-16 13:10:00")
+    await clock.advance_to("2026-11-16 13:11:00")
+
+    assert len(house.anna.messages) == 2
+
+
+async def test_alerts_of_several_rooms_within_the_bundling_window_make_one_message(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+    phones: SimulatedPhones,
+) -> None:
+    """Two windows and an offline TRV in other rooms, all within a minute."""
+    clock.set("2026-11-16 11:50:30")
+    house = await _house(
+        hass, schedules, simulated_trvs, phones, "Wohnzimmer", "Bad", "Kinderzimmer"
+    )
+    house.trvs["Kinderzimmer"].set_available(False)
+    await clock.advance_to("2026-11-16 12:00:00")
+    await house.windows["Wohnzimmer"].open()
+    await clock.advance_to("2026-11-16 12:00:40")
+    await house.windows["Bad"].open()
+    for moment in ("12:01:00", "12:01:40", "12:20:00", "12:20:30", "12:20:40"):
+        await clock.advance_to(f"2026-11-16 {moment}")
+    assert house.anna.messages == []
+
+    await clock.advance_to("2026-11-16 12:21:00")
+    await clock.advance_to("2026-11-16 12:30:00")
+
+    expected = [
+        Message(
+            TITLE,
+            "Fenster seit über 20 min offen: Bad, Wohnzimmer\n"
+            "Heizkörperthermostat seit über 30 min nicht erreichbar: "
+            "trv_kinderzimmer (Kinderzimmer)",
+        )
+    ]
+    assert house.anna.messages == expected
+    assert house.ben.messages == expected
+
+
+async def test_alerts_further_apart_than_the_bundling_window_make_two_messages(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+    phones: SimulatedPhones,
+) -> None:
+    """Windows opened at 12:00 and 12:05 are reported at 12:21 and 12:26."""
+    clock.set("2026-11-16 12:00")
+    house = await _house(hass, schedules, simulated_trvs, phones, "Wohnzimmer", "Bad")
+    await house.windows["Wohnzimmer"].open()
+    await clock.advance_to("2026-11-16 12:05:00")
+    await house.windows["Bad"].open()
+    for moment in ("12:06", "12:20", "12:21", "12:25", "12:26"):
+        await clock.advance_to(f"2026-11-16 {moment}:00")
+
+    assert house.anna.messages == [
+        Message(TITLE, "Fenster seit über 20 min offen: Wohnzimmer"),
+        Message(TITLE, "Fenster seit über 20 min offen: Bad"),
+    ]
+
+
+async def test_nothing_is_sent_in_the_quiet_time_and_what_still_applies_comes_at_7(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+    phones: SimulatedPhones,
+) -> None:
+    """Living room window open all night, bath window closed at 23:40, TRV out at 1."""
+    clock.set("2026-11-16 21:30")
+    house = await _house(
+        hass, schedules, simulated_trvs, phones, "Wohnzimmer", "Bad", "Kinderzimmer"
+    )
+    await clock.advance_to("2026-11-16 21:50:00")
+    await house.windows["Wohnzimmer"].open()
+    for moment in ("21:51", "22:10", "22:11", "23:00"):
+        await clock.advance_to(f"2026-11-16 {moment}:00")
+    await house.windows["Bad"].open()
+    for moment in ("23:01", "23:20", "23:21", "23:40"):
+        await clock.advance_to(f"2026-11-16 {moment}:00")
+    await house.windows["Bad"].close()
+    await clock.advance_to("2026-11-17 01:00:00")
+    house.trvs["Kinderzimmer"].set_available(False)
+    for moment in ("01:30:00", "01:31:00", "06:59:59"):
+        await clock.advance_to(f"2026-11-17 {moment}")
+    assert house.anna.messages == []
+
+    await clock.advance_to("2026-11-17 07:00:00")
+    await clock.advance_to("2026-11-17 08:00:00")
+
+    expected = [
+        Message(
+            TITLE,
+            "Fenster seit über 20 min offen: Wohnzimmer\n"
+            "Heizkörperthermostat seit über 30 min nicht erreichbar: "
+            "trv_kinderzimmer (Kinderzimmer)",
+        )
+    ]
+    assert house.anna.messages == expected
+    assert house.ben.messages == expected
+
+
+async def test_alert_resolved_in_the_quiet_time_is_not_reported_in_the_morning(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+    phones: SimulatedPhones,
+) -> None:
+    """The bridge was out from 23:00 to 05:00; at 07:00 there is nothing to say."""
+    clock.set("2026-11-16 23:00")
+    house = await _house(hass, schedules, simulated_trvs, phones)
+    trv = house.trvs["Wohnzimmer"]
+    trv.set_available(False)
+    await clock.advance_to("2026-11-16 23:30:00")
+    await clock.advance_to("2026-11-17 05:00:00")
+    trv.set_available(True)
+
+    await clock.advance_to("2026-11-17 07:00:00")
+    await clock.advance_to("2026-11-17 08:00:00")
+
+    assert house.anna.messages == []
+
+
+async def test_quiet_time_follows_the_global_settings(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+    phones: SimulatedPhones,
+) -> None:
+    """With a quiet time 12:00-14:00 the window open since 11:50 comes at 14:00."""
+    clock.set("2026-11-16 11:50")
+    house = await _house(
+        hass,
+        schedules,
+        simulated_trvs,
+        phones,
+        quiet_start="12:00:00",
+        quiet_end="14:00:00",
+    )
+    await house.windows["Wohnzimmer"].open()
+    for moment in ("11:51:00", "12:10:00", "12:11:00", "13:59:59"):
+        await clock.advance_to(f"2026-11-16 {moment}")
+    assert house.anna.messages == []
+
+    await clock.advance_to("2026-11-16 14:00:00")
+
+    assert len(house.anna.messages) == 1
+
+
+async def test_message_follows_the_language_of_home_assistant(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+    phones: SimulatedPhones,
+) -> None:
+    """With Home Assistant in English, the message is in English."""
+    clock.set("2026-11-16 11:50:30")
+    house = await _house(
+        hass, schedules, simulated_trvs, phones, "Wohnzimmer", "Bad", language="en"
+    )
+    house.trvs["Bad"].set_available(False)
+    await clock.advance_to("2026-11-16 12:00:00")
+    await house.windows["Wohnzimmer"].open()
+    for moment in ("12:01:00", "12:20:00", "12:20:30", "12:21:00"):
+        await clock.advance_to(f"2026-11-16 {moment}")
+
+    assert house.anna.messages == [
+        Message(
+            "Heating",
+            "Window open for more than 20 min: Wohnzimmer\n"
+            "Radiator thermostat unreachable for more than 30 min: trv_bad (Bad)",
+        )
+    ]
+
+
+async def test_changing_the_global_settings_does_not_repeat_a_sent_message(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+    phones: SimulatedPhones,
+) -> None:
+    """The options dialog reloads the integration; the open window stays reported."""
+    clock.set("2026-11-16 12:00")
+    house = await _house(hass, schedules, simulated_trvs, phones)
+    await house.windows["Wohnzimmer"].open()
+    for moment in ("12:01", "12:20", "12:21"):
+        await clock.advance_to(f"2026-11-16 {moment}:00")
+
+    await change_global_settings(hass, house.entry, away_delay=duration(45))
+    for moment in ("12:30", "12:31", "13:00"):
+        await clock.advance_to(f"2026-11-16 {moment}:00")
+
+    assert len(house.anna.messages) == 1
+
+
+async def test_changing_the_recipients_sends_to_the_new_ones(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+    phones: SimulatedPhones,
+) -> None:
+    """Without Ben among the recipients, only Anna gets the message."""
+    clock.set("2026-11-16 12:00")
+    house = await _house(hass, schedules, simulated_trvs, phones)
+    await change_global_settings(
+        hass, house.entry, notify_targets=[house.anna.entity_id]
+    )
+    await house.windows["Wohnzimmer"].open()
+    for moment in ("12:01", "12:20", "12:21"):
+        await clock.advance_to(f"2026-11-16 {moment}:00")
+
+    assert len(house.anna.messages) == 1
+    assert house.ben.messages == []
