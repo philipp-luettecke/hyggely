@@ -110,8 +110,8 @@ def _target_setting(decision: Decision) -> TrvSetting:
 def _reported_setting(state: State | None) -> TrvSetting | None:
     """Return the setting a TRV state shows; None for an invalid one.
 
-    An off tado TRV reports no temperature and the 7-35 range (ticket 01); off
-    compares by mode only.
+    An off tado TRV reports no temperature and the 7-35 range; off compares by
+    mode only.
     """
     if state is None:
         return None
@@ -128,7 +128,7 @@ class RoomController:
 
     Commands go out only when a TRV deviates from the decision; for `heat` the
     mode always travels with the temperature because an off tado TRV silently
-    ignores a temperature alone (ticket 01). Unreachable TRVs and TRVs reporting
+    ignores a temperature alone. Unreachable TRVs and TRVs reporting
     an invalid mode get nothing; once they take commands again they get the
     current target again, deviating or not. These resends and the first commands
     while Home Assistant starts go through the command pacer, one after another.
@@ -250,7 +250,7 @@ class RoomController:
         """Return the mean current temperature of the TRVs taking commands.
 
         The others show frozen values: on a bridge outage and until fresh values
-        arrive after it (ticket 01).
+        arrive after it.
         """
         temperatures = [
             float(value)

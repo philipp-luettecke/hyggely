@@ -1,8 +1,8 @@
 """Simulated tado TRVs for scenario tests.
 
 Each TRV is a real `climate` entity on its own device, so the integration talks to
-it through the normal `climate.*` actions. The behaviour follows the measurements
-in ticket 01: commands show up in the state at once, an off TRV reports no target
+it through the normal `climate.*` actions. The behaviour follows the measured tado
+hardware: commands show up in the state at once, an off TRV reports no target
 temperature and a 7-35 range and ignores a temperature without mode, values
 reported by the TRV itself carry a fresh context without user or parent.
 

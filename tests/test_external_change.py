@@ -1,7 +1,7 @@
 """External changes at the TRV, e.g. a knob turn, become an override of the room.
 
-Measured in ticket 01: Home Assistant polls the TRVs once a minute, so a knob turn
-arrives at the next full minute; a command shows in the TRV state at once.
+Home Assistant polls the TRVs once a minute, so a knob turn arrives at the next
+full minute; a command shows in the TRV state at once.
 """
 
 from homeassistant.core import HomeAssistant

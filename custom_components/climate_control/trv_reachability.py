@@ -32,7 +32,7 @@ class TrvReachability:
 
     A TRV is unreachable while its climate entity or the temperature sensor of its
     device is unavailable: on a bridge outage the climate entity of a tado TRV
-    only freezes with its old values (ticket 01). A TRV takes commands while it is
+    only freezes with its old values. A TRV takes commands while it is
     reachable and reports a valid mode. A TRV that could not take commands is
     handed to `on_back` as soon as it can again. A new state of a TRV that took
     commands before and still does goes to `on_report`, with the state before;
