@@ -161,6 +161,7 @@ class RoomController:
         self._listeners: list[Callable[[], None]] = []
         self._unsubscribers: list[CALLBACK_TYPE] = []
         self._cancel_reevaluation: CALLBACK_TYPE | None = None
+        self._evaluation_requested = False
         self._evaluation_lock = asyncio.Lock()
         self._reachability = TrvReachability(
             hass,
@@ -293,9 +294,23 @@ class RoomController:
 
     @callback
     def _async_request_evaluation(self) -> None:
+        """Evaluate soon, once for all requests arriving together.
+
+        At a block boundary both the reevaluation timer and the schedule ask.
+        """
+        if self._evaluation_requested:
+            return
+        self._evaluation_requested = True
         self._entry.async_create_task(
-            self._hass, self._async_evaluate(), f"evaluate room {self.name}"
+            self._hass,
+            self._async_evaluate_requested(),
+            f"evaluate room {self.name}",
+            eager_start=False,
         )
+
+    async def _async_evaluate_requested(self) -> None:
+        self._evaluation_requested = False
+        await self._async_evaluate()
 
     @callback
     def _reevaluation_due(self, _now: datetime) -> None:
