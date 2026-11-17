@@ -10,8 +10,10 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 
+from .command_pacer import CommandPacer
 from .const import CONF_AREA, CONF_AWAY_DELAY, CONF_PERSONS, DOMAIN, SUBENTRY_TYPE_ROOM
 from .presence import Presence
+from .repair_issues import async_track_offline_trvs
 from .room_controller import RoomController
 from .room_mode_store import RoomModeStore, async_remove_room_modes
 
@@ -23,6 +25,7 @@ class RuntimeData:
     """Live objects of the main entry."""
 
     presence: Presence
+    pacer: CommandPacer
     rooms: dict[str, RoomController] = field(default_factory=dict)
 
 
@@ -38,14 +41,16 @@ async def async_setup_entry(
         entry.options[CONF_PERSONS],
         timedelta(**entry.options[CONF_AWAY_DELAY]),
     )
-    entry.runtime_data = RuntimeData(presence=presence)
+    pacer = CommandPacer(hass, entry)
+    entry.runtime_data = RuntimeData(presence=presence, pacer=pacer)
+    entry.async_on_unload(pacer.async_stop)
     rooms = entry.get_subentries_of_type(SUBENTRY_TYPE_ROOM)
     room_modes = RoomModeStore(hass, entry.entry_id)
     await room_modes.async_load([subentry.subentry_id for subentry in rooms])
     for subentry in rooms:
         _async_register_room_device(hass, entry, subentry)
         entry.runtime_data.rooms[subentry.subentry_id] = RoomController(
-            hass, entry, subentry, presence, room_modes
+            hass, entry, subentry, presence, room_modes=room_modes, pacer=pacer
         )
 
     entry.async_on_unload(presence.async_stop)
@@ -55,6 +60,7 @@ async def async_setup_entry(
 
     for controller in entry.runtime_data.rooms.values():
         entry.async_on_unload(controller.async_stop)
+        entry.async_on_unload(async_track_offline_trvs(hass, entry, controller))
         await controller.async_start()
 
     entry.async_on_unload(entry.add_update_listener(_async_reload))

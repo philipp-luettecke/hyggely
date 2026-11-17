@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Callable
 from datetime import datetime, timedelta
+from functools import partial
 
 from homeassistant.components.climate import (
     ATTR_CURRENT_TEMPERATURE,
@@ -22,6 +23,7 @@ from homeassistant.const import (
 )
 from homeassistant.core import (
     CALLBACK_TYPE,
+    CoreState,
     Event,
     EventStateChangedData,
     HomeAssistant,
@@ -33,6 +35,7 @@ from homeassistant.helpers.event import (
 )
 from homeassistant.util import dt as dt_util
 
+from .command_pacer import CommandPacer
 from .const import (
     CONF_AWAY_TEMPERATURE,
     CONF_COMFORT_TEMPERATURE,
@@ -63,6 +66,7 @@ from .target_resolver import (
     mode_expires_at,
     resolve,
 )
+from .trv_reachability import TrvReachability
 
 
 def _override_expiry(entry: ConfigEntry, subentry: ConfigSubentry) -> OverrideExpiry:
@@ -83,16 +87,21 @@ class RoomController:
 
     Commands go out only when a TRV deviates from the decision; for `heat` the
     mode always travels with the temperature because an off tado TRV silently
-    ignores a temperature alone (ticket 01).
+    ignores a temperature alone (ticket 01). Unreachable TRVs and TRVs reporting
+    an invalid mode get nothing; once they take commands again they get the
+    current target again, deviating or not. These resends and the first commands
+    while Home Assistant starts go through the command pacer, one after another.
     """
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         hass: HomeAssistant,
         entry: ConfigEntry,
         subentry: ConfigSubentry,
         presence: Presence,
+        *,
         room_modes: RoomModeStore,
+        pacer: CommandPacer,
     ) -> None:
         """Create the controller for the room `subentry` of the main entry.
 
@@ -102,6 +111,7 @@ class RoomController:
         self._entry = entry
         self._presence = presence
         self._room_modes = room_modes
+        self._pacer = pacer
         self.room_id = subentry.subentry_id
         self.name = subentry.title
         self._trvs: list[str] = list(subentry.data[CONF_TRVS])
@@ -127,6 +137,12 @@ class RoomController:
         self._unsubscribers: list[CALLBACK_TYPE] = []
         self._cancel_reevaluation: CALLBACK_TYPE | None = None
         self._evaluation_lock = asyncio.Lock()
+        self._reachability = TrvReachability(
+            hass,
+            self._trvs,
+            on_back=self._trv_back,
+            on_offline_changed=self._notify_listeners,
+        )
 
     @property
     def room_mode(self) -> RoomMode:
@@ -170,6 +186,11 @@ class RoomController:
                 return float(value)
         return None
 
+    @property
+    def offline_trvs(self) -> frozenset[str]:
+        """Return the TRVs of the room unreachable for longer than 30 minutes."""
+        return self._reachability.offline
+
     @callback
     def async_add_listener(self, listener: Callable[[], None]) -> CALLBACK_TYPE:
         """Call `listener` whenever the room changes; return the unsubscriber."""
@@ -187,7 +208,8 @@ class RoomController:
         self._unsubscribers.append(
             self._presence.async_add_listener(self._async_request_evaluation)
         )
-        await self._async_evaluate()
+        self._unsubscribers.append(self._reachability.async_start())
+        await self._async_evaluate(catch_up=self._hass.state is not CoreState.running)
 
     async def async_set_override(self, temperature: float) -> None:
         """Heat to `temperature` until the override expiry."""
@@ -243,6 +265,22 @@ class RoomController:
         self._notify_listeners()
 
     @callback
+    def _trv_back(self, trv: str) -> None:
+        self._pacer.async_enqueue(
+            f"resend to {trv}", partial(self._async_catch_up, trv, resend=True)
+        )
+
+    async def _async_catch_up(self, trv: str, *, resend: bool) -> None:
+        """Bring `trv` to the current decision; `resend` even if it matches."""
+        async with self._evaluation_lock:
+            decision = self._decision
+            if decision is not None and (
+                self._deviates(trv, decision)
+                or (resend and self._reachability.takes_commands(trv))
+            ):
+                await self._async_command(trv, decision)
+
+    @callback
     def _cancel_pending_reevaluation(self) -> None:
         if self._cancel_reevaluation is not None:
             self._cancel_reevaluation()
@@ -253,7 +291,8 @@ class RoomController:
         for listener in list(self._listeners):
             listener()
 
-    async def _async_evaluate(self) -> None:
+    async def _async_evaluate(self, *, catch_up: bool = False) -> None:
+        """Decide and command deviating TRVs; with `catch_up` paced, not at once."""
         async with self._evaluation_lock:
             self._cancel_pending_reevaluation()
             schedule = self._schedule.read()
@@ -286,25 +325,36 @@ class RoomController:
                     self._hass, self._reevaluation_due, decision.reevaluate_at
                 )
             for trv in self._trvs:
-                await self._async_command_if_deviating(trv, decision)
+                if not self._deviates(trv, decision):
+                    continue
+                if catch_up:
+                    self._pacer.async_enqueue(
+                        f"bring {trv} up to date",
+                        partial(self._async_catch_up, trv, resend=False),
+                    )
+                else:
+                    await self._async_command(trv, decision)
 
-    async def _async_command_if_deviating(self, trv: str, decision: Decision) -> None:
+    @callback
+    def _deviates(self, trv: str, decision: Decision) -> bool:
+        """Return whether `trv` takes commands and differs from `decision`."""
+        if not self._reachability.takes_commands(trv):
+            return False
         state = self._hass.states.get(trv)
-        if state is None or state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN):
-            return
+        assert state is not None
+        return state.state != decision.trv_mode or (
+            decision.trv_mode is TrvMode.HEAT
+            and state.attributes.get(ATTR_TEMPERATURE) != decision.target_temperature
+        )
+
+    async def _async_command(self, trv: str, decision: Decision) -> None:
         if decision.trv_mode is TrvMode.OFF:
-            if state.state != TrvMode.OFF:
-                await self._hass.services.async_call(
-                    CLIMATE_DOMAIN,
-                    SERVICE_SET_HVAC_MODE,
-                    {ATTR_ENTITY_ID: trv, ATTR_HVAC_MODE: TrvMode.OFF},
-                    blocking=True,
-                )
-            return
-        if (
-            state.state == decision.trv_mode
-            and state.attributes.get(ATTR_TEMPERATURE) == decision.target_temperature
-        ):
+            await self._hass.services.async_call(
+                CLIMATE_DOMAIN,
+                SERVICE_SET_HVAC_MODE,
+                {ATTR_ENTITY_ID: trv, ATTR_HVAC_MODE: TrvMode.OFF},
+                blocking=True,
+            )
             return
         await self._hass.services.async_call(
             CLIMATE_DOMAIN,
