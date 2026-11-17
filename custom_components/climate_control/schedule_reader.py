@@ -45,13 +45,17 @@ class ScheduleReader:
     """Reads the blocks of one schedule helper and reports changes to it.
 
     A block carries its level under `level` in its additional data; a block
-    without one is comfort, outside blocks eco applies.
+    without one is comfort, outside blocks eco applies. The level of a block
+    applies from the lead time before its start until its end.
     """
 
-    def __init__(self, hass: HomeAssistant, entity_id: str) -> None:
-        """Read the schedule helper `entity_id`."""
+    def __init__(
+        self, hass: HomeAssistant, entity_id: str, lead_time: timedelta
+    ) -> None:
+        """Read the schedule helper `entity_id` with the lead time of the room."""
         self._hass = hass
         self._entity_id = entity_id
+        self._lead_time = lead_time
         self._week: Mapping[str, Any] | None = None
 
     async def async_track(self, on_change: Callable[[], None]) -> CALLBACK_TYPE:
@@ -100,7 +104,7 @@ class ScheduleReader:
         ):
             return None
         now = dt_util.utcnow()
-        return _schedule_level(_blocks_from(self._week, now), now)
+        return _schedule_level(_blocks_from(self._week, now), now, self._lead_time)
 
     async def _async_load(self) -> None:
         try:
@@ -149,25 +153,40 @@ def _block_level(data: Mapping[str, Any] | None) -> Level:
     return Level.COMFORT
 
 
-def _level_at(blocks: list[_Block], moment: datetime) -> Level:
+def _level_at(blocks: list[_Block], moment: datetime, lead_time: timedelta) -> Level:
+    """Return the level at `moment`.
+
+    The next block starting within the lead time wins, also over a block in
+    progress; the end of a block is never brought forward.
+    """
+    for block in blocks:
+        if moment < block.start <= moment + lead_time:
+            return block.level
     for block in blocks:
         if block.start <= moment < block.end:
             return block.level
     return Level.ECO
 
 
-def _schedule_level(blocks: list[_Block], now: datetime) -> ScheduleLevel:
+def _schedule_level(
+    blocks: list[_Block], now: datetime, lead_time: timedelta
+) -> ScheduleLevel:
     """Return the level at `now` and the next moment it changes."""
-    level = _level_at(blocks, now)
+    level = _level_at(blocks, now, lead_time)
     moments = sorted(
         {
             moment
             for block in blocks
-            for moment in (block.start, block.end)
+            for moment in (block.start - lead_time, block.start, block.end)
             if now < moment <= now + _HORIZON
         }
     )
     next_block_boundary = next(
-        (moment for moment in moments if _level_at(blocks, moment) != level), None
+        (
+            moment
+            for moment in moments
+            if _level_at(blocks, moment, lead_time) != level
+        ),
+        None,
     )
     return ScheduleLevel(level=level, next_block_boundary=next_block_boundary)

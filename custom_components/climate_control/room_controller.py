@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Callable
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from homeassistant.components.climate import (
     ATTR_CURRENT_TEMPERATURE,
@@ -37,9 +37,11 @@ from .const import (
     CONF_COMFORT_TEMPERATURE,
     CONF_ECO_TEMPERATURE,
     CONF_FROST_TEMPERATURE,
+    CONF_LEAD_TIME,
     CONF_NIGHT_TEMPERATURE,
     CONF_SCHEDULE,
     CONF_TRVS,
+    DEFAULT_LEAD_TIME,
     DEFAULT_NIGHT_TEMPERATURE,
 )
 from .schedule_reader import ScheduleReader
@@ -70,7 +72,11 @@ class RoomController:
         self.room_id = subentry.subentry_id
         self.name = subentry.title
         self._trvs: list[str] = list(subentry.data[CONF_TRVS])
-        self._schedule = ScheduleReader(hass, subentry.data[CONF_SCHEDULE])
+        self._schedule = ScheduleReader(
+            hass,
+            subentry.data[CONF_SCHEDULE],
+            timedelta(**subentry.data.get(CONF_LEAD_TIME, DEFAULT_LEAD_TIME)),
+        )
         self._level_temperatures = {
             Level.COMFORT: float(subentry.data[CONF_COMFORT_TEMPERATURE]),
             Level.NIGHT: float(
