@@ -49,6 +49,7 @@ from .target_resolver import (
     TrvMode,
     resolve,
 )
+from .trv_reachability import TrvReachability
 
 
 class RoomController:
@@ -56,7 +57,9 @@ class RoomController:
 
     Commands go out only when a TRV deviates from the decision; for `heat` the
     mode always travels with the temperature because an off tado TRV silently
-    ignores a temperature alone (ticket 01).
+    ignores a temperature alone (ticket 01). Unreachable TRVs and TRVs reporting
+    an invalid mode get nothing; once they take commands again they get the
+    current target again, deviating or not.
     """
 
     def __init__(
@@ -82,6 +85,12 @@ class RoomController:
         self._unsubscribers: list[CALLBACK_TYPE] = []
         self._cancel_reevaluation: CALLBACK_TYPE | None = None
         self._evaluation_lock = asyncio.Lock()
+        self._reachability = TrvReachability(
+            hass,
+            self._trvs,
+            on_back=self._trv_back,
+            on_offline_changed=self._notify_listeners,
+        )
 
     @property
     def room_mode(self) -> RoomMode:
@@ -105,6 +114,11 @@ class RoomController:
                 return float(value)
         return None
 
+    @property
+    def offline_trvs(self) -> frozenset[str]:
+        """Return the TRVs of the room unreachable for longer than 30 minutes."""
+        return self._reachability.offline
+
     @callback
     def async_add_listener(self, listener: Callable[[], None]) -> CALLBACK_TYPE:
         """Call `listener` whenever the room changes; return the unsubscriber."""
@@ -119,6 +133,7 @@ class RoomController:
         self._unsubscribers.append(
             async_track_state_change_event(self._hass, self._trvs, self._trv_changed)
         )
+        self._unsubscribers.append(self._reachability.async_start())
         await self._async_evaluate()
 
     async def async_set_override(self, temperature: float) -> None:
@@ -167,6 +182,18 @@ class RoomController:
         self._notify_listeners()
 
     @callback
+    def _trv_back(self, trv: str) -> None:
+        self._entry.async_create_task(
+            self._hass, self._async_resend(trv), f"resend to {trv}"
+        )
+
+    async def _async_resend(self, trv: str) -> None:
+        """Send the current target again, e.g. to a TRV back from an outage."""
+        async with self._evaluation_lock:
+            if self._decision is not None and self._reachability.takes_commands(trv):
+                await self._async_command(trv, self._decision)
+
+    @callback
     def _cancel_pending_reevaluation(self) -> None:
         if self._cancel_reevaluation is not None:
             self._cancel_reevaluation()
@@ -207,22 +234,24 @@ class RoomController:
                 await self._async_command_if_deviating(trv, decision)
 
     async def _async_command_if_deviating(self, trv: str, decision: Decision) -> None:
+        if not self._reachability.takes_commands(trv):
+            return
         state = self._hass.states.get(trv)
-        if state is None or state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN):
-            return
-        if decision.trv_mode is TrvMode.OFF:
-            if state.state != TrvMode.OFF:
-                await self._hass.services.async_call(
-                    CLIMATE_DOMAIN,
-                    SERVICE_SET_HVAC_MODE,
-                    {ATTR_ENTITY_ID: trv, ATTR_HVAC_MODE: TrvMode.OFF},
-                    blocking=True,
-                )
-            return
-        if (
-            state.state == decision.trv_mode
-            and state.attributes.get(ATTR_TEMPERATURE) == decision.target_temperature
+        assert state is not None
+        if state.state != decision.trv_mode or (
+            decision.trv_mode is TrvMode.HEAT
+            and state.attributes.get(ATTR_TEMPERATURE) != decision.target_temperature
         ):
+            await self._async_command(trv, decision)
+
+    async def _async_command(self, trv: str, decision: Decision) -> None:
+        if decision.trv_mode is TrvMode.OFF:
+            await self._hass.services.async_call(
+                CLIMATE_DOMAIN,
+                SERVICE_SET_HVAC_MODE,
+                {ATTR_ENTITY_ID: trv, ATTR_HVAC_MODE: TrvMode.OFF},
+                blocking=True,
+            )
             return
         await self._hass.services.async_call(
             CLIMATE_DOMAIN,
