@@ -2,8 +2,8 @@
 
 A room snapshot goes in; the target temperature, the room mode, the mode to send
 to the TRVs, the reason and the next time the room must be re-evaluated come out.
-Later inputs (window open, house mode, vacation, away) extend `RoomSnapshot` and
-take their place in the ranking of `resolve`.
+Later inputs (window open, house mode, vacation) extend `RoomSnapshot` and take
+their place in the ranking of `resolve`.
 """
 
 from __future__ import annotations
@@ -16,10 +16,17 @@ from typing import Any
 
 
 class Level(StrEnum):
-    """Schedule levels; eco applies outside blocks."""
+    """Named temperature tiers.
+
+    Schedule levels are comfort, night and eco (outside blocks); away and frost
+    are global.
+    """
 
     COMFORT = "comfort"
+    NIGHT = "night"
     ECO = "eco"
+    AWAY = "away"
+    FROST = "frost"
 
 
 class RoomMode(StrEnum):
@@ -71,16 +78,18 @@ class RoomSnapshot:
     """Everything the target resolver needs to decide for one room.
 
     `room_mode` heat carries `override_temperature`; heat and off end at
-    `mode_expires_at` (None: no expiry).
+    `mode_expires_at` (None: no expiry). `away` is the same for all rooms.
     """
 
     now: datetime
     schedule: ScheduleLevel
     level_temperatures: Mapping[Level, float]
     frost_temperature: float
+    away_temperature: float
     room_mode: RoomMode = RoomMode.AUTO
     override_temperature: float | None = None
     mode_expires_at: datetime | None = None
+    away: bool = False
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -93,10 +102,11 @@ class Reason:
 
 @dataclass(frozen=True, kw_only=True)
 class Decision:
-    """Outcome for one room."""
+    """Outcome for one room; `level` is None while the target follows no level."""
 
     room_mode: RoomMode
     target_temperature: float
+    level: Level | None
     trv_mode: TrvMode
     reason: Reason
     reevaluate_at: datetime | None
@@ -115,6 +125,7 @@ def resolve(snapshot: RoomSnapshot) -> Decision:
         return Decision(
             room_mode=RoomMode.OFF,
             target_temperature=snapshot.frost_temperature,
+            level=Level.FROST,
             trv_mode=TrvMode.OFF,
             reason=Reason(code=ReasonCode.ROOM_OFF, params={"until": expires_at}),
             reevaluate_at=reevaluate_at,
@@ -123,13 +134,24 @@ def resolve(snapshot: RoomSnapshot) -> Decision:
         return Decision(
             room_mode=RoomMode.HEAT,
             target_temperature=snapshot.override_temperature,
+            level=None,
             trv_mode=TrvMode.HEAT,
             reason=Reason(code=ReasonCode.OVERRIDE, params={"until": expires_at}),
             reevaluate_at=reevaluate_at,
         )
+    if snapshot.away:
+        return Decision(
+            room_mode=RoomMode.AUTO,
+            target_temperature=snapshot.away_temperature,
+            level=Level.AWAY,
+            trv_mode=TrvMode.HEAT,
+            reason=Reason(code=ReasonCode.AWAY),
+            reevaluate_at=schedule.next_block_boundary,
+        )
     return Decision(
         room_mode=RoomMode.AUTO,
         target_temperature=snapshot.level_temperatures[schedule.level],
+        level=schedule.level,
         trv_mode=TrvMode.HEAT,
         reason=Reason(
             code=ReasonCode(schedule.level.value),

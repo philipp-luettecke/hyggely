@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from collections import deque
 from collections.abc import Callable
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from homeassistant.components.climate import (
     ATTR_CURRENT_TEMPERATURE,
@@ -41,16 +41,22 @@ from .const import (
     ATTR_REASON_CODE,
     ATTR_REASON_PARAMS,
     ATTR_TARGET_TEMPERATURE,
+    CONF_AWAY_TEMPERATURE,
     CONF_COMFORT_TEMPERATURE,
     CONF_ECO_TEMPERATURE,
     CONF_FROST_TEMPERATURE,
+    CONF_LEAD_TIME,
+    CONF_NIGHT_TEMPERATURE,
     CONF_SCHEDULE,
     CONF_TRVS,
     DATA_TARGETS_BEFORE_RELOAD,
+    DEFAULT_LEAD_TIME,
+    DEFAULT_NIGHT_TEMPERATURE,
     DOMAIN,
     EVENT_TARGET_CHANGED,
     room_entity_unique_id,
 )
+from .presence import Presence
 from .schedule_reader import ScheduleReader
 from .target_resolver import (
     Decision,
@@ -74,24 +80,38 @@ class RoomController:
     """
 
     def __init__(
-        self, hass: HomeAssistant, entry: ConfigEntry, subentry: ConfigSubentry
+        self,
+        hass: HomeAssistant,
+        entry: ConfigEntry,
+        subentry: ConfigSubentry,
+        presence: Presence,
     ) -> None:
         """Create the controller for the room `subentry` of the main entry."""
         self._hass = hass
         self._entry = entry
+        self._presence = presence
         self.room_id = subentry.subentry_id
         self.name = subentry.title
         self._trvs: list[str] = list(subentry.data[CONF_TRVS])
-        self._schedule = ScheduleReader(hass, subentry.data[CONF_SCHEDULE])
+        self._schedule = ScheduleReader(
+            hass,
+            subentry.data[CONF_SCHEDULE],
+            timedelta(**subentry.data.get(CONF_LEAD_TIME, DEFAULT_LEAD_TIME)),
+        )
         self._level_temperatures = {
             Level.COMFORT: float(subentry.data[CONF_COMFORT_TEMPERATURE]),
+            Level.NIGHT: float(
+                subentry.data.get(CONF_NIGHT_TEMPERATURE, DEFAULT_NIGHT_TEMPERATURE)
+            ),
             Level.ECO: float(subentry.data[CONF_ECO_TEMPERATURE]),
         }
         self._frost_temperature = float(entry.options[CONF_FROST_TEMPERATURE])
+        self._away_temperature = float(entry.options[CONF_AWAY_TEMPERATURE])
         self._room_mode = RoomMode.AUTO
         self._override_temperature: float | None = None
         self._mode_expires_at: datetime | None = None
         self._decision: Decision | None = None
+        self._next_block_boundary: datetime | None = None
         self._snapshot: RoomSnapshot | None = None
         self._recent_decisions: deque[tuple[datetime, Decision]] = deque(
             maxlen=RECENT_DECISIONS
@@ -113,6 +133,16 @@ class RoomController:
     def target_temperature(self) -> float | None:
         """Return the target temperature of the room."""
         return self._decision.target_temperature if self._decision else None
+
+    @property
+    def level(self) -> Level | None:
+        """Return the level that sets the target, None for an override."""
+        return self._decision.level if self._decision else None
+
+    @property
+    def next_block_boundary(self) -> datetime | None:
+        """Return when the level from the schedule changes next, lead time included."""
+        return self._next_block_boundary
 
     @property
     def reason(self) -> Reason | None:
@@ -150,10 +180,13 @@ class RoomController:
     async def async_start(self) -> None:
         """Subscribe the inputs and bring the TRVs into the decided state."""
         self._unsubscribers.append(
-            self._schedule.async_track(self._async_request_evaluation)
+            await self._schedule.async_track(self._async_request_evaluation)
         )
         self._unsubscribers.append(
             async_track_state_change_event(self._hass, self._trvs, self._trv_changed)
+        )
+        self._unsubscribers.append(
+            self._presence.async_add_listener(self._async_request_evaluation)
         )
         await self._async_evaluate()
 
@@ -223,15 +256,18 @@ class RoomController:
             schedule = self._schedule.read()
             if schedule is None:
                 return
+            self._next_block_boundary = schedule.next_block_boundary
             now = dt_util.utcnow()
             snapshot = RoomSnapshot(
                 now=now,
                 schedule=schedule,
                 level_temperatures=self._level_temperatures,
                 frost_temperature=self._frost_temperature,
+                away_temperature=self._away_temperature,
                 room_mode=self._room_mode,
                 override_temperature=self._override_temperature,
                 mode_expires_at=self._mode_expires_at,
+                away=self._presence.away,
             )
             decision = resolve(snapshot)
             self._snapshot = snapshot

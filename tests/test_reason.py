@@ -8,7 +8,16 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.translation import async_get_translations
 import pytest
 
-from tests.scenario import TIME_ZONE, Clock, LivingRoom, Schedules, living_room
+from tests.scenario import (
+    TIME_ZONE,
+    Clock,
+    LivingRoom,
+    Persons,
+    Schedules,
+    block,
+    change_global_settings,
+    living_room,
+)
 from tests.simulated_trv import SimulatedTrvs
 
 DOMAIN = "climate_control"
@@ -49,6 +58,44 @@ async def test_reason_explains_comfort_until_the_block_ends(
     assert reason.attributes["reason_code"] == "comfort"
     assert reason.attributes["until"] == _local("2026-11-16 09:00")
     assert reason.name == "Wohnzimmer Grund"
+
+
+async def test_reason_explains_night_during_a_night_block(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+) -> None:
+    """During the afternoon night block the reason reads night until 15:00."""
+    await _speak(hass, "de")
+    clock.set("2026-11-16 14:00")
+
+    room = await living_room(
+        hass, schedules, simulated_trvs, monday=[block("13:00", "15:00", "night")]
+    )
+
+    assert room.reason(hass).state == "Nacht bis 15:00"
+    assert room.reason(hass).attributes["reason_code"] == "night"
+
+
+async def test_reason_explains_away_once_everybody_is_gone(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+    persons: Persons,
+) -> None:
+    """With the house away the reason reads away, without a time."""
+    await _speak(hass, "de")
+    clock.set("2026-11-16 08:00")
+    entity_ids = await persons.add(anna="not_home")
+    room = await living_room(hass, schedules, simulated_trvs)
+    await change_global_settings(hass, room.entry, persons=entity_ids)
+
+    await clock.advance_to("2026-11-16 08:30")
+
+    assert room.reason(hass).state == "Abwesend"
+    assert room.reason(hass).attributes["reason_code"] == "away"
 
 
 async def test_reason_names_the_date_of_a_block_boundary_beyond_a_day(

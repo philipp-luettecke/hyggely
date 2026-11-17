@@ -86,14 +86,18 @@
             "trvs": "Radiator thermostat",
             "schedule": "Schedule",
             "comfort_temperature": "Comfort temperature",
+            "night_temperature": "Night temperature",
             "eco_temperature": "Eco temperature",
+            "lead_time": "Lead time",
             "area": "Area"
           },
           "data_description": {
             "trvs": "The radiator thermostat (TRV) this room controls.",
-            "schedule": "Schedule helper of the room. Comfort applies during its blocks, eco outside.",
-            "comfort_temperature": "Target temperature during a block of the schedule.",
+            "schedule": "Schedule helper of the room. During a block its level applies (comfort or night, comfort if none is set), eco outside.",
+            "comfort_temperature": "Target temperature during a block with level comfort or without a level.",
+            "night_temperature": "Target temperature during a block with level night.",
             "eco_temperature": "Target temperature outside the blocks of the schedule.",
+            "lead_time": "The level of a block already applies this long before the block starts, so the room is warm in time.",
             "area": "The room appears as a device in this area."
           }
         },
@@ -104,14 +108,18 @@
             "trvs": "Radiator thermostat",
             "schedule": "Schedule",
             "comfort_temperature": "Comfort temperature",
+            "night_temperature": "Night temperature",
             "eco_temperature": "Eco temperature",
+            "lead_time": "Lead time",
             "area": "Area"
           },
           "data_description": {
             "trvs": "The radiator thermostat (TRV) this room controls.",
-            "schedule": "Schedule helper of the room. Comfort applies during its blocks, eco outside.",
-            "comfort_temperature": "Target temperature during a block of the schedule.",
+            "schedule": "Schedule helper of the room. During a block its level applies (comfort or night, comfort if none is set), eco outside.",
+            "comfort_temperature": "Target temperature during a block with level comfort or without a level.",
+            "night_temperature": "Target temperature during a block with level night.",
             "eco_temperature": "Target temperature outside the blocks of the schedule.",
+            "lead_time": "The level of a block already applies this long before the block starts, so the room is warm in time.",
             "area": "The room appears as a device in this area."
           }
         }
@@ -121,16 +129,21 @@
       }
     }
   },
-  "selector": {
-    "override_expiry_policy": {
-      "options": {
-        "next_block": "At the next block boundary",
-        "duration": "After duration",
-        "earliest": "Earlier of next block boundary and duration"
-      }
+  "device": {
+    "house": {
+      "name": "House"
     }
   },
   "entity": {
+    "binary_sensor": {
+      "away": {
+        "name": "Away",
+        "state": {
+          "on": "Yes",
+          "off": "No"
+        }
+      }
+    },
     "sensor": {
       "reason": {
         "name": "Reason",
@@ -153,10 +166,25 @@
           "house_off": "House off"
         },
         "state_attributes": {
-          "reason_code": { "name": "Reason code" },
-          "until": { "name": "Until" },
-          "since": { "name": "Since" }
+          "reason_code": {
+            "name": "Reason code"
+          },
+          "until": {
+            "name": "Until"
+          },
+          "since": {
+            "name": "Since"
+          }
         }
+      }
+    }
+  },
+  "selector": {
+    "override_expiry_policy": {
+      "options": {
+        "next_block": "At the next block boundary",
+        "duration": "After duration",
+        "earliest": "Earlier of next block boundary and duration"
       }
     }
   }

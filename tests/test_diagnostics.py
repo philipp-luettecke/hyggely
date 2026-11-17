@@ -13,7 +13,7 @@ from pytest_homeassistant.components.diagnostics import (
 )
 from pytest_homeassistant.typing import ClientSessionGenerator
 
-from tests.scenario import Clock, Schedules, living_room
+from tests.scenario import Clock, Schedules, change_global_settings, living_room
 from tests.simulated_trv import SimulatedTrvs
 
 PERSONS_AND_RECIPIENTS = {
@@ -54,11 +54,7 @@ async def test_diagnostics_hold_settings_snapshots_and_decisions_but_no_persons(
     """Diagnostics after a block start, with persons and recipients left out."""
     clock.set("2026-11-16 06:00")
     room = await living_room(hass, schedules, simulated_trvs)
-    result = await hass.config_entries.options.async_init(room.entry.entry_id)
-    await hass.config_entries.options.async_configure(
-        result["flow_id"], {**room.entry.options, **PERSONS_AND_RECIPIENTS}
-    )
-    await hass.async_block_till_done()
+    await change_global_settings(hass, room.entry, **PERSONS_AND_RECIPIENTS)
     await clock.advance_to("2026-11-16 07:00:00")
 
     diagnostics = await download_diagnostics(room.entry)
@@ -74,7 +70,7 @@ async def test_diagnostics_hold_settings_snapshots_and_decisions_but_no_persons(
     assert living["snapshot"]["now"] == "2026-11-16T06:00:00+00:00"
     assert living["snapshot"]["schedule"] == {
         "level": "comfort",
-        "next_block_boundary": "2026-11-16T09:00:00+01:00",
+        "next_block_boundary": "2026-11-16T08:00:00+00:00",
     }
     assert living["snapshot"]["room_mode"] == "auto"
     assert [
@@ -84,11 +80,11 @@ async def test_diagnostics_hold_settings_snapshots_and_decisions_but_no_persons(
         (
             "2026-11-16T05:00:00+00:00",
             17.0,
-            {"code": "eco", "params": {"until": "2026-11-16T07:00:00+01:00"}},
+            {"code": "eco", "params": {"until": "2026-11-16T06:00:00+00:00"}},
         ),
         (
             "2026-11-16T06:00:00+00:00",
             21.0,
-            {"code": "comfort", "params": {"until": "2026-11-16T09:00:00+01:00"}},
+            {"code": "comfort", "params": {"until": "2026-11-16T08:00:00+00:00"}},
         ),
     ]

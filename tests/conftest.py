@@ -6,7 +6,7 @@ from homeassistant.setup import async_setup_component
 import pytest
 from pytest_homeassistant.typing import WebSocketGenerator
 
-from tests.scenario import TIME_ZONE, Clock, Schedules
+from tests.scenario import TIME_ZONE, Clock, Persons, Schedules
 from tests.simulated_trv import SimulatedTrvs
 
 
@@ -36,3 +36,9 @@ async def schedules(
     """Return a factory for native schedule helpers."""
     assert await async_setup_component(hass, "schedule", {})
     return Schedules(hass, await hass_ws_client(hass))
+
+
+@pytest.fixture
+def persons(hass: HomeAssistant) -> Persons:
+    """Return a factory for native persons followed through their phones."""
+    return Persons(hass)
