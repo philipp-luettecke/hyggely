@@ -130,7 +130,7 @@ async def start_up(hass: HomeAssistant, entry: ConfigEntry) -> None:
 
 def room_settings(subentry: ConfigSubentry) -> dict[str, Any]:
     """Return the values of the room dialog as currently configured."""
-    optional = ("override_expiry_policy", "override_expiry_duration")
+    optional = ("window_contacts", "override_expiry_policy", "override_expiry_duration")
     return {
         "name": subentry.title,
         "trvs": subentry.data["trvs"][0],
@@ -156,17 +156,20 @@ async def add_room(
     night_temperature: float = 16.0,
     eco_temperature: float = 17.0,
     lead_minutes: int = 0,
+    window_contacts: list[str] | None = None,
 ) -> ConfigSubentry:
     """Add a room through the room dialog of the main entry."""
     result = await hass.config_entries.subentries.async_init(
         (entry.entry_id, "room"), context={"source": SOURCE_USER}
     )
     assert result["type"] is FlowResultType.FORM
+    contacts = {} if window_contacts is None else {"window_contacts": window_contacts}
     result = await hass.config_entries.subentries.async_configure(
         result["flow_id"],
         {
             "name": name,
             "trvs": trv,
+            **contacts,
             "schedule": schedule,
             "comfort_temperature": comfort_temperature,
             "night_temperature": night_temperature,
@@ -248,6 +251,7 @@ async def living_room(
     current_temperature: float = 19.5,
     lead_minutes: int = 0,
     global_settings: dict[str, Any] | None = None,
+    window_contacts: list[str] | None = None,
     **weekdays: list[dict[str, Any]],
 ) -> LivingRoom:
     """Add the living room with comfort 21 °C, night 16 °C and eco 17 °C.
@@ -277,6 +281,7 @@ async def living_room(
         night_temperature=16.0,
         eco_temperature=17.0,
         lead_minutes=lead_minutes,
+        window_contacts=window_contacts,
     )
     return LivingRoom(entry, subentry, trv, schedule)
 
@@ -361,6 +366,32 @@ class Persons:
         self._hass.states.async_set(
             f"device_tracker.{name}_phone", presence, {"source_type": "router"}
         )
+
+
+class WindowContact:
+    """A window contact as a binary sensor: on is open, off is closed."""
+
+    def __init__(self, hass: HomeAssistant, name: str) -> None:
+        """Add `binary_sensor.<name>`, closed."""
+        self._hass = hass
+        self.entity_id = f"binary_sensor.{name}"
+        self._report("off")
+
+    async def open(self) -> None:
+        """Open the window."""
+        await self.report("on")
+
+    async def close(self) -> None:
+        """Close the window."""
+        await self.report("off")
+
+    async def report(self, state: str) -> None:
+        """Let the contact report a state, e.g. `unavailable` on an empty battery."""
+        self._report(state)
+        await self._hass.async_block_till_done()
+
+    def _report(self, state: str) -> None:
+        self._hass.states.async_set(self.entity_id, state, {"device_class": "window"})
 
 
 def away_state(hass: HomeAssistant, entry: ConfigEntry) -> State:

@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from collections import deque
 from collections.abc import Callable
+from dataclasses import replace
 from datetime import datetime, timedelta
 from functools import partial
 
@@ -54,6 +55,8 @@ from .const import (
     CONF_OVERRIDE_EXPIRY_POLICY,
     CONF_SCHEDULE,
     CONF_TRVS,
+    CONF_WINDOW_CONTACTS,
+    CONF_WINDOW_DELAY,
     DATA_TARGETS_BEFORE_RELOAD,
     DEFAULT_LEAD_TIME,
     DEFAULT_NIGHT_TEMPERATURE,
@@ -74,10 +77,12 @@ from .target_resolver import (
     RoomMode,
     RoomSnapshot,
     TrvMode,
+    heat_temperature,
     mode_expires_at,
     resolve,
 )
 from .trv_reachability import TrvReachability
+from .window import WindowContacts
 
 RECENT_DECISIONS = 20
 
@@ -143,6 +148,11 @@ class RoomController:
         self._frost_temperature = float(entry.options[CONF_FROST_TEMPERATURE])
         self._away_temperature = float(entry.options[CONF_AWAY_TEMPERATURE])
         self._override_expiry = _override_expiry(entry, subentry)
+        self._window = WindowContacts(
+            hass,
+            subentry.data.get(CONF_WINDOW_CONTACTS, []),
+            timedelta(**entry.options[CONF_WINDOW_DELAY]),
+        )
         self._choice = room_modes.get(self.room_id)
         self._decision: Decision | None = None
         self._next_block_boundary: datetime | None = None
@@ -238,6 +248,9 @@ class RoomController:
         self._unsubscribers.append(
             self._presence.async_add_listener(self._async_request_evaluation)
         )
+        self._unsubscribers.append(
+            self._window.async_track(self._async_request_evaluation)
+        )
         self._unsubscribers.append(self._reachability.async_start())
         await self._async_evaluate(catch_up=self._hass.state is not CoreState.running)
 
@@ -249,9 +262,10 @@ class RoomController:
     async def async_set_room_mode(self, room_mode: RoomMode) -> None:
         """Switch the room mode; heat keeps the current target."""
         if room_mode is RoomMode.HEAT:
-            if self.target_temperature is None:
+            if self._snapshot is None:
                 return
-            await self._async_choose(RoomMode.HEAT, self.target_temperature)
+            snapshot = replace(self._snapshot, now=dt_util.utcnow())
+            await self._async_choose(RoomMode.HEAT, heat_temperature(snapshot))
         else:
             await self._async_choose(room_mode, None)
         await self._async_evaluate()
@@ -344,6 +358,7 @@ class RoomController:
                 override_temperature=self._choice.override_temperature,
                 mode_expires_at=self._choice.expires_at,
                 away=self._presence.away,
+                window_open_since=self._window.open_since,
             )
             decision = resolve(snapshot)
             self._snapshot = snapshot
