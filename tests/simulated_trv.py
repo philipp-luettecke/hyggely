@@ -3,11 +3,13 @@
 Each TRV is a real `climate` entity on its own device, so the integration talks to
 it through the normal `climate.*` actions. The behaviour follows the measurements
 in ticket 01: commands show up in the state at once, an off TRV reports no target
-temperature and a 7-35 range, values reported by the TRV itself carry a fresh
-context without user or parent.
+temperature and a 7-35 range and ignores a temperature without mode, values
+reported by the TRV itself carry a fresh context without user or parent.
 
 Like HomeKit Device, the device also carries a temperature sensor, and Home
-Assistant polls the TRV once a minute at the full minute (no push). On a bridge
+Assistant polls the TRV once a minute at the full minute (no push). Knob turns,
+switching off at the device and commands the TRV did not take show up at the
+next poll, with only the values the TRV holds by then. On a bridge
 outage the climate entity freezes with its old values and ignores commands; only
 the temperature sensor becomes unavailable, at the second poll after unplugging.
 After plugging the bridge in again, the sensor returns at the second poll
@@ -146,6 +148,8 @@ class SimulatedTrv(ClimateEntity):
         )
         self._attr_hvac_mode = hvac_mode
         self._setpoint = target_temperature
+        self._device_mode = hvac_mode
+        self._device_setpoint = target_temperature
         self._attr_native_current_temperature = current_temperature
         self._invalid_mode = False
         self._outage: _BridgeOutage | None = None
@@ -155,6 +159,9 @@ class SimulatedTrv(ClimateEntity):
         self.calls: list[TrvCall] = []
         self.apply_commands = True
         """When False, commands are recorded but do not change the state."""
+        self.commands_to_lose = 0
+        """Number of coming commands the TRV does not take: Home Assistant shows
+        them at once, the next poll reports the old values again."""
 
     @property
     def temperature_sensor_id(self) -> str:
@@ -197,11 +204,11 @@ class SimulatedTrv(ClimateEntity):
         target_temperature: float | None = None,
         current_temperature: float | None = None,
     ) -> None:
-        """Make the TRV report new values, e.g. after a knob turn."""
+        """Make the TRV report new values at once, outside the poll."""
         if hvac_mode is not None:
-            self._attr_hvac_mode = hvac_mode
+            self._attr_hvac_mode = self._device_mode = hvac_mode
         if target_temperature is not None:
-            self._setpoint = target_temperature
+            self._setpoint = self._device_setpoint = target_temperature
         if current_temperature is not None:
             self._attr_native_current_temperature = current_temperature
         self._invalid_mode = False
@@ -209,6 +216,15 @@ class SimulatedTrv(ClimateEntity):
         self.async_write_ha_state()
         if current_temperature is not None and self.temperature_sensor is not None:
             self.temperature_sensor.async_write_ha_state()
+
+    def turn_knob(self, target_temperature: float) -> None:
+        """Turn the knob: the TRV heats to the new value, seen at the next poll."""
+        self._device_mode = HVACMode.HEAT
+        self._device_setpoint = target_temperature
+
+    def switch_off(self) -> None:
+        """Switch the TRV off at the device, seen at the next poll."""
+        self._device_mode = HVACMode.OFF
 
     def report_invalid_mode(self) -> None:
         """Make the bridge report the mode None, shown as state `unknown`."""
@@ -234,14 +250,19 @@ class SimulatedTrv(ClimateEntity):
 
     @callback
     def _poll(self, _now: datetime) -> None:
-        """Run the minute poll; only a bridge outage changes anything yet."""
+        """Run the minute poll: report what the TRV holds unless the bridge is out."""
         outage = self._outage
         if outage is None:
+            if (self._attr_hvac_mode, self._setpoint) != (
+                self._device_mode,
+                self._device_setpoint,
+            ):
+                self._report_device()
             return
         now = dt_util.utcnow()
         if outage.fresh_at is not None and now >= outage.fresh_at:
             self._outage = None
-            self.report()
+            self._report_device()
             self._set_sensor_available(True)
         elif outage.sensor_back_at is not None and now >= outage.sensor_back_at:
             if not self._invalid_mode:
@@ -250,6 +271,9 @@ class SimulatedTrv(ClimateEntity):
         elif now >= outage.sensor_lost_at:
             self._set_sensor_available(False)
 
+    def _report_device(self) -> None:
+        self.report(hvac_mode=self._device_mode, target_temperature=self._device_setpoint)
+
     def _set_sensor_available(self, available: bool) -> None:
         if self.temperature_sensor is not None:
             self.temperature_sensor.set_available(available)
@@ -257,22 +281,34 @@ class SimulatedTrv(ClimateEntity):
     def _takes_commands(self) -> bool:
         return self.apply_commands and self._outage is None
 
+    def _show_command(self) -> None:
+        """Show the command at once; the TRV holds it unless it is lost."""
+        if self.commands_to_lose > 0:
+            self.commands_to_lose -= 1
+        else:
+            self._device_mode = self._attr_hvac_mode
+            self._device_setpoint = self._setpoint
+        self.async_write_ha_state()
+
     async def async_set_temperature(self, **kwargs: Any) -> None:
-        """Apply mode and temperature at once."""
+        """Apply mode and temperature at once; off, a temperature alone is ignored."""
         if not self._takes_commands():
             return
-        if (hvac_mode := kwargs.get("hvac_mode")) is not None:
+        hvac_mode = kwargs.get("hvac_mode")
+        if hvac_mode is None and self._device_mode == HVACMode.OFF:
+            return
+        if hvac_mode is not None:
             self._attr_hvac_mode = HVACMode(hvac_mode)
         if (temperature := kwargs.get("temperature")) is not None:
             self._setpoint = float(temperature)
-        self.async_write_ha_state()
+        self._show_command()
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Apply the mode at once."""
         if not self._takes_commands():
             return
         self._attr_hvac_mode = hvac_mode
-        self.async_write_ha_state()
+        self._show_command()
 
     @callback
     def record_call(self, event: Event) -> None:

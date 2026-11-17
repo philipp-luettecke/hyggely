@@ -1,7 +1,14 @@
 """Self-test of the simulated TRV test helper (behaviour measured in ticket 01)."""
 
-from homeassistant.core import HomeAssistant
+from homeassistant.core import (
+    Event,
+    EventStateChangedData,
+    HomeAssistant,
+    State,
+    callback,
+)
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.event import async_track_state_change_event
 
 from tests.scenario import Clock
 from tests.simulated_trv import SimulatedTrvs, TrvCall
@@ -59,6 +66,113 @@ async def test_reported_change_arrives_with_a_fresh_context(
     assert state.context.user_id is None
     assert state.context.parent_id is None
     assert trv.calls == []
+
+
+def _trv_changes(hass: HomeAssistant, entity_id: str) -> list[State]:
+    """Start recording the states a TRV changes to."""
+    changes: list[State] = []
+
+    @callback
+    def record(event: Event[EventStateChangedData]) -> None:
+        if (new_state := event.data["new_state"]) is not None:
+            changes.append(new_state)
+
+    async_track_state_change_event(hass, entity_id, record)
+    return changes
+
+
+async def test_knob_turns_arrive_at_the_next_poll_with_only_the_end_value(
+    hass: HomeAssistant, simulated_trvs: SimulatedTrvs, clock: Clock
+) -> None:
+    """Measured in ticket 01: four quick turns give one change at the full minute."""
+    clock.set("2026-11-16 12:42:10")
+    trv = await simulated_trvs.add("office", target_temperature=23.0)
+    changes = _trv_changes(hass, trv.entity_id)
+
+    for temperature in (22.0, 21.0, 20.0, 19.0):
+        trv.turn_knob(temperature)
+    await clock.advance_to("2026-11-16 12:42:59")
+    assert changes == []
+
+    await clock.advance_to("2026-11-16 12:43:00")
+
+    [state] = changes
+    assert state.state == "heat"
+    assert state.attributes["temperature"] == 19.0
+    assert state.context.user_id is None
+    assert state.context.parent_id is None
+
+
+async def test_switching_off_at_the_device_arrives_at_the_next_poll(
+    hass: HomeAssistant, simulated_trvs: SimulatedTrvs, clock: Clock
+) -> None:
+    """Switched off at the TRV, it reports off without a target at the full minute."""
+    clock.set("2026-11-16 12:00:20")
+    trv = await simulated_trvs.add("office", target_temperature=21.0)
+
+    trv.switch_off()
+    assert _state(hass, trv.entity_id) == "heat"
+    await clock.advance_to("2026-11-16 12:01:00")
+
+    state = hass.states.get(trv.entity_id)
+    assert state is not None
+    assert state.state == "off"
+    assert state.attributes["temperature"] is None
+
+
+async def test_command_not_taken_shows_at_once_and_reverts_at_the_next_poll(
+    hass: HomeAssistant, simulated_trvs: SimulatedTrvs, clock: Clock
+) -> None:
+    """Home Assistant shows a command at once; the poll brings the old values back."""
+    clock.set("2026-11-16 12:00:30")
+    trv = await simulated_trvs.add("office", target_temperature=17.0)
+    trv.commands_to_lose = 1
+
+    await hass.services.async_call(
+        "climate",
+        "set_temperature",
+        {"entity_id": trv.entity_id, "temperature": 23, "hvac_mode": "heat"},
+        blocking=True,
+    )
+    state = hass.states.get(trv.entity_id)
+    assert state is not None
+    assert state.attributes["temperature"] == 23
+
+    await clock.advance_to("2026-11-16 12:01:00")
+    state = hass.states.get(trv.entity_id)
+    assert state is not None
+    assert state.attributes["temperature"] == 17
+
+
+async def test_off_trv_ignores_a_temperature_without_mode(
+    hass: HomeAssistant, simulated_trvs: SimulatedTrvs, clock: Clock
+) -> None:
+    """Measured in ticket 01: the call is accepted, the TRV stays off."""
+    clock.set("2026-11-16 12:00:30")
+    trv = await simulated_trvs.add("office", hvac_mode="off")
+
+    await hass.services.async_call(
+        "climate",
+        "set_temperature",
+        {"entity_id": trv.entity_id, "temperature": 21},
+        blocking=True,
+    )
+    await clock.advance_to("2026-11-16 12:01:00")
+
+    state = hass.states.get(trv.entity_id)
+    assert state is not None
+    assert state.state == "off"
+    assert state.attributes["temperature"] is None
+
+    await hass.services.async_call(
+        "climate",
+        "set_hvac_mode",
+        {"entity_id": trv.entity_id, "hvac_mode": "heat"},
+        blocking=True,
+    )
+    state = hass.states.get(trv.entity_id)
+    assert state is not None
+    assert state.attributes["temperature"] == 20.0
 
 
 async def test_trv_that_ignores_commands_still_records_them(
