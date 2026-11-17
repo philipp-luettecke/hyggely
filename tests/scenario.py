@@ -101,9 +101,7 @@ async def add_main_entry(hass: HomeAssistant, **settings: Any) -> ConfigEntry:
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": SOURCE_USER}
     )
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"], settings
-    )
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], settings)
     await hass.async_block_till_done()
     entry: ConfigEntry = result["result"]
     return entry

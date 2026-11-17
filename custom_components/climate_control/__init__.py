@@ -11,6 +11,7 @@ from homeassistant.helpers import device_registry as dr
 
 from .const import CONF_AREA, DOMAIN, SUBENTRY_TYPE_ROOM
 from .room_controller import RoomController
+from .room_mode_store import RoomModeStore, async_remove_room_modes
 
 PLATFORMS = [Platform.CLIMATE]
 
@@ -30,10 +31,13 @@ async def async_setup_entry(
 ) -> None:
     """Set up the main entry with one room controller per room."""
     entry.runtime_data = RuntimeData()
-    for subentry in entry.get_subentries_of_type(SUBENTRY_TYPE_ROOM):
+    rooms = entry.get_subentries_of_type(SUBENTRY_TYPE_ROOM)
+    room_modes = RoomModeStore(hass, entry.entry_id)
+    await room_modes.async_load([subentry.subentry_id for subentry in rooms])
+    for subentry in rooms:
         _async_register_room_device(hass, entry, subentry)
         entry.runtime_data.rooms[subentry.subentry_id] = RoomController(
-            hass, entry, subentry
+            hass, entry, subentry, room_modes
         )
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
@@ -50,6 +54,11 @@ async def async_unload_entry(
 ) -> bool:
     """Unload the main entry."""
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Forget the room modes of the removed main entry."""
+    await async_remove_room_modes(hass, entry.entry_id)
 
 
 async def _async_reload(hass: HomeAssistant, entry: ConfigEntry) -> None:

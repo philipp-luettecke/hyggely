@@ -1,4 +1,4 @@
-"""Override on the room entity: heat to a chosen temperature until the override expiry."""
+"""Override on the room entity: heat to a chosen temperature until it expires."""
 
 from homeassistant.core import HomeAssistant
 
@@ -8,10 +8,13 @@ from tests.scenario import (
     Clock,
     Schedules,
     block,
+    change_global_settings,
     change_room,
     commands,
     living_room,
     local,
+    shut_down,
+    start_up,
 )
 from tests.simulated_trv import SimulatedTrvs
 
@@ -194,6 +197,90 @@ async def test_new_temperature_during_an_override_updates_temperature_and_expiry
     assert room.state(hass).state == "heat"
     await clock.advance_to("2026-11-16 16:00:00")
     assert room.state(hass).state == "auto"
+
+
+async def test_override_survives_a_restart_with_its_remaining_time(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+) -> None:
+    """After a restart at 13:00 the room still heats to 23 °C until 15:00."""
+    clock.set("2026-11-16 12:00")
+    room = await living_room(hass, schedules, simulated_trvs)
+    await room.call(hass, "set_temperature", temperature=23)
+
+    await shut_down(hass, room.entry)
+    clock.set("2026-11-16 13:00")
+    await start_up(hass, room.entry)
+
+    assert room.state(hass).state == "heat"
+    assert room.state(hass).attributes["temperature"] == 23.0
+    assert room.state(hass).attributes["override_expiry"] == local("2026-11-16 15:00")
+    assert commands(room.trv) == [HEAT_17, HEAT_23]
+
+    await clock.advance_to("2026-11-16 15:00:00")
+
+    assert room.state(hass).state == "auto"
+    assert commands(room.trv) == [HEAT_17, HEAT_23, HEAT_17]
+
+
+async def test_override_expired_during_a_restart_is_auto_right_after_start(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+) -> None:
+    """Home Assistant back at 15:30 finds the 15:00 override expiry passed."""
+    clock.set("2026-11-16 12:00")
+    room = await living_room(hass, schedules, simulated_trvs)
+    await room.call(hass, "set_temperature", temperature=23)
+
+    await shut_down(hass, room.entry)
+    clock.set("2026-11-16 15:30")
+    await start_up(hass, room.entry)
+
+    assert room.state(hass).state == "auto"
+    assert room.state(hass).attributes["temperature"] == 17.0
+    assert commands(room.trv) == [HEAT_17, HEAT_23, HEAT_17]
+
+
+async def test_override_survives_a_change_of_the_global_settings(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+) -> None:
+    """Changing the global settings reloads the rooms but keeps the override."""
+    clock.set("2026-11-16 12:00")
+    room = await living_room(hass, schedules, simulated_trvs)
+    await room.call(hass, "set_temperature", temperature=23)
+
+    await change_global_settings(hass, room.entry, away_temperature=16.0)
+
+    assert room.state(hass).state == "heat"
+    assert room.state(hass).attributes["temperature"] == 23.0
+    assert room.state(hass).attributes["override_expiry"] == local("2026-11-16 15:00")
+    assert commands(room.trv) == [HEAT_17, HEAT_23]
+
+
+async def test_auto_after_a_restart_stays_auto(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+) -> None:
+    """An override ended with auto does not come back after a restart."""
+    clock.set("2026-11-16 12:00")
+    room = await living_room(hass, schedules, simulated_trvs)
+    await room.call(hass, "set_temperature", temperature=23)
+    await room.call(hass, "set_hvac_mode", hvac_mode="auto")
+
+    await shut_down(hass, room.entry)
+    await start_up(hass, room.entry)
+
+    assert room.state(hass).state == "auto"
+    assert room.state(hass).attributes["temperature"] == 17.0
 
 
 async def test_auto_ends_the_override_at_once(
