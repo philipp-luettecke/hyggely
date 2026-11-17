@@ -18,7 +18,7 @@ Die simulierten TRVs der Tests bilden dieses Verhalten nach: Sie übernehmen ein
 
 **Blocked by:** 01, 06
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Eine Temperaturänderung am TRV, die vom zuletzt gesendeten Wert abweicht, erzeugt eine Übersteuerung mit diesem Wert
 - [ ] Der sofortige Zustand nach einem eigenen Befehl erzeugt keine Übersteuerung
@@ -46,3 +46,5 @@ Die simulierten TRVs der Tests bilden dieses Verhalten nach: Sie übernehmen ein
 **Simulierte TRVs:** `turn_knob(t)` und `switch_off()` wirken sofort im Gerät, Home Assistant sieht sie erst bei der nächsten vollen Minute, nur mit dem Endwert und neuem Context. `commands_to_lose = n`: Die nächsten n Befehle zeigt HA sofort, das Gerät übernimmt sie nicht, und die nächste Abfrage meldet wieder die alten Werte. Ein ausgeschaltetes TRV ignoriert `set_temperature` ohne `hvac_mode`. `report()` meldet weiterhin sofort (z. B. Ist-Temperatur) und gilt im laufenden Betrieb bei abweichendem Sollwert als externe Änderung. `test_trv_already_at_target_gets_no_command` nutzt deshalb jetzt eine Drehung am Knopf. Hinweis für Tests: Vor einer Drehung mit `clock.advance_to` (nicht `clock.set`) an die Uhrzeit gehen, sonst holt der überfällige Abfragetakt die Drehung zu früh ab.
 
 **Offen (Spec):** Falls das TRV per Befehl gesetzte halbe Grad im Echo rundet (Schrittweite ungeklärt), würde das als externe Änderung erkannt. Mit der Klärung der Schrittweite prüfen.
+
+**Abgeschlossen:** Merge-Commit `b25e7eb` auf `feat/heating-control` (plus Typ-Korrektur in `tests/simulated_trv.py`). Ergebnis: Override Detector erkennt Drehung am Knopf und Ausschalten am Gerät, eigene Befehle werden nie zur Übersteuerung, nicht übernommene Befehle werden einmal wiederholt; 156 Tests grün.
