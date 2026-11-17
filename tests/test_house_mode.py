@@ -462,9 +462,7 @@ async def test_vacation_survives_a_restart(
     await start_up(hass, room.entry)
 
     assert house.house_mode.state == "vacation"
-    assert dt_util.parse_datetime(house.vacation_end.state) == local(
-        "2026-11-20 18:00"
-    )
+    assert dt_util.parse_datetime(house.vacation_end.state) == local("2026-11-20 18:00")
     assert room.state(hass).attributes["temperature"] == 15.0
     assert commands(room.trv) == [HEAT_21, HEAT_15]
 
@@ -490,9 +488,7 @@ async def test_vacation_ended_during_a_restart_is_auto_right_after_start(
     await start_up(hass, room.entry)
 
     assert house.house_mode.state == "auto"
-    assert dt_util.parse_datetime(house.vacation_end.state) == local(
-        "2026-11-20 18:00"
-    )
+    assert dt_util.parse_datetime(house.vacation_end.state) == local("2026-11-20 18:00")
     assert room.state(hass).attributes["temperature"] == 17.0
     assert commands(room.trv) == [HEAT_21, HEAT_15, HEAT_17]
 
