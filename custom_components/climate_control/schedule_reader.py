@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import datetime
 
-from homeassistant.const import STATE_ON
+from homeassistant.const import STATE_OFF, STATE_ON
 from homeassistant.core import (
     CALLBACK_TYPE,
     Event,
@@ -14,6 +14,7 @@ from homeassistant.core import (
     callback,
 )
 from homeassistant.helpers.event import async_track_state_change_event
+from homeassistant.util import dt as dt_util
 
 from .target_resolver import Level, ScheduleLevel
 
@@ -44,14 +45,21 @@ class ScheduleReader:
 
     @callback
     def read(self) -> ScheduleLevel | None:
-        """Return the effective level, or None while the helper has no state."""
+        """Return the effective level, or None while it is not known.
+
+        It is not known while the helper has no state and while the helper has
+        not yet switched at a block boundary that has already been reached; its
+        state change follows and is reported to `on_change`.
+        """
         state = self._hass.states.get(self._entity_id)
-        if state is None or state.state not in ("on", "off"):
+        if state is None or state.state not in (STATE_ON, STATE_OFF):
             return None
         next_event = state.attributes.get(ATTR_NEXT_EVENT)
+        if not isinstance(next_event, datetime):
+            next_event = None
+        elif next_event <= dt_util.utcnow():
+            return None
         return ScheduleLevel(
             level=Level.COMFORT if state.state == STATE_ON else Level.ECO,
-            next_block_boundary=next_event
-            if isinstance(next_event, datetime)
-            else None,
+            next_block_boundary=next_event,
         )

@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from homeassistant.components.climate import (
     ClimateEntity,
     ClimateEntityFeature,
     HVACMode,
 )
-from homeassistant.const import UnitOfTemperature
+from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
@@ -15,6 +17,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from . import ClimateControlConfigEntry
 from .const import DOMAIN, TEMPERATURE_STEP, TRV_MAX_TEMPERATURE, TRV_MIN_TEMPERATURE
 from .room_controller import RoomController
+from .target_resolver import RoomMode
 
 
 async def async_setup_entry(
@@ -55,7 +58,7 @@ class RoomClimate(ClimateEntity):
     @property
     def hvac_mode(self) -> HVACMode:
         """Return the room mode."""
-        return HVACMode.AUTO
+        return HVACMode(self._controller.room_mode)
 
     @property
     def native_target_temperature(self) -> float | None:
@@ -66,3 +69,11 @@ class RoomClimate(ClimateEntity):
     def native_current_temperature(self) -> float | None:
         """Return the current temperature of the room."""
         return self._controller.current_temperature
+
+    async def async_set_temperature(self, **kwargs: Any) -> None:
+        """Override the room with the new temperature."""
+        await self._controller.async_set_override(float(kwargs[ATTR_TEMPERATURE]))
+
+    async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
+        """Switch the room mode."""
+        await self._controller.async_set_room_mode(RoomMode(hvac_mode))

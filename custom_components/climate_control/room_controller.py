@@ -10,6 +10,7 @@ from homeassistant.components.climate import (
     ATTR_CURRENT_TEMPERATURE,
     ATTR_HVAC_MODE,
     DOMAIN as CLIMATE_DOMAIN,
+    SERVICE_SET_HVAC_MODE,
     SERVICE_SET_TEMPERATURE,
 )
 from homeassistant.config_entries import ConfigEntry, ConfigSubentry
@@ -35,11 +36,19 @@ from homeassistant.util import dt as dt_util
 from .const import (
     CONF_COMFORT_TEMPERATURE,
     CONF_ECO_TEMPERATURE,
+    CONF_FROST_TEMPERATURE,
     CONF_SCHEDULE,
     CONF_TRVS,
 )
 from .schedule_reader import ScheduleReader
-from .target_resolver import Decision, Level, RoomSnapshot, resolve
+from .target_resolver import (
+    Decision,
+    Level,
+    RoomMode,
+    RoomSnapshot,
+    TrvMode,
+    resolve,
+)
 
 
 class RoomController:
@@ -64,11 +73,20 @@ class RoomController:
             Level.COMFORT: float(subentry.data[CONF_COMFORT_TEMPERATURE]),
             Level.ECO: float(subentry.data[CONF_ECO_TEMPERATURE]),
         }
+        self._frost_temperature = float(entry.options[CONF_FROST_TEMPERATURE])
+        self._room_mode = RoomMode.AUTO
+        self._override_temperature: float | None = None
+        self._mode_expires_at: datetime | None = None
         self._decision: Decision | None = None
         self._listeners: list[Callable[[], None]] = []
         self._unsubscribers: list[CALLBACK_TYPE] = []
         self._cancel_reevaluation: CALLBACK_TYPE | None = None
         self._evaluation_lock = asyncio.Lock()
+
+    @property
+    def room_mode(self) -> RoomMode:
+        """Return the room mode as last decided."""
+        return self._decision.room_mode if self._decision else RoomMode.AUTO
 
     @property
     def target_temperature(self) -> float | None:
@@ -102,6 +120,29 @@ class RoomController:
             async_track_state_change_event(self._hass, self._trvs, self._trv_changed)
         )
         await self._async_evaluate()
+
+    async def async_set_override(self, temperature: float) -> None:
+        """Heat to `temperature` until the next block boundary."""
+        self._set_room_mode(RoomMode.HEAT, temperature)
+        await self._async_evaluate()
+
+    async def async_set_room_mode(self, room_mode: RoomMode) -> None:
+        """Switch the room mode; heat keeps the current target."""
+        if room_mode is RoomMode.HEAT:
+            if self.target_temperature is None:
+                return
+            self._set_room_mode(RoomMode.HEAT, self.target_temperature)
+        else:
+            self._set_room_mode(room_mode, None)
+        await self._async_evaluate()
+
+    @callback
+    def _set_room_mode(self, room_mode: RoomMode, temperature: float | None) -> None:
+        self._room_mode = room_mode
+        self._override_temperature = temperature
+        self._mode_expires_at = None
+        if room_mode is not RoomMode.AUTO and (schedule := self._schedule.read()):
+            self._mode_expires_at = schedule.next_block_boundary
 
     @callback
     def async_stop(self) -> None:
@@ -148,8 +189,14 @@ class RoomController:
                     now=now,
                     schedule=schedule,
                     level_temperatures=self._level_temperatures,
+                    frost_temperature=self._frost_temperature,
+                    room_mode=self._room_mode,
+                    override_temperature=self._override_temperature,
+                    mode_expires_at=self._mode_expires_at,
                 )
             )
+            if decision.room_mode is RoomMode.AUTO:
+                self._set_room_mode(RoomMode.AUTO, None)
             self._decision = decision
             self._notify_listeners()
             if decision.reevaluate_at is not None and decision.reevaluate_at > now:
@@ -162,6 +209,15 @@ class RoomController:
     async def _async_command_if_deviating(self, trv: str, decision: Decision) -> None:
         state = self._hass.states.get(trv)
         if state is None or state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+            return
+        if decision.trv_mode is TrvMode.OFF:
+            if state.state != TrvMode.OFF:
+                await self._hass.services.async_call(
+                    CLIMATE_DOMAIN,
+                    SERVICE_SET_HVAC_MODE,
+                    {ATTR_ENTITY_ID: trv, ATTR_HVAC_MODE: TrvMode.OFF},
+                    blocking=True,
+                )
             return
         if (
             state.state == decision.trv_mode

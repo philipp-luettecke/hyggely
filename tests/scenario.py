@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -13,11 +14,13 @@ from homeassistant.config_entries import (
     ConfigEntry,
     ConfigSubentry,
 )
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, State
 from homeassistant.data_entry_flow import FlowResultType
-from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import area_registry as ar, entity_registry as er
 from pytest_homeassistant.common import async_fire_time_changed
 from pytest_homeassistant.typing import MockHAClientWebSocket
+
+from tests.simulated_trv import SimulatedTrv, SimulatedTrvs
 
 DOMAIN = "climate_control"
 TIME_ZONE = "Europe/Berlin"
@@ -155,6 +158,67 @@ def room_entity_id(hass: HomeAssistant, subentry: ConfigSubentry) -> str:
         if entry.config_subentry_id == subentry.subentry_id
         and entry.domain == "climate"
     )
+
+
+@dataclass
+class LivingRoom:
+    """The living room: one TRV, a schedule with a block Monday 07:00-09:00."""
+
+    entry: ConfigEntry
+    subentry: ConfigSubentry
+    trv: SimulatedTrv
+    schedule: str
+
+    def entity_id(self, hass: HomeAssistant) -> str:
+        """Return the entity id of the room entity."""
+        return room_entity_id(hass, self.subentry)
+
+    def state(self, hass: HomeAssistant) -> State:
+        """Return the state of the room entity."""
+        state = hass.states.get(self.entity_id(hass))
+        assert state is not None
+        return state
+
+
+async def living_room(
+    hass: HomeAssistant,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+    *,
+    trv_mode: str = "heat",
+    trv_temperature: float = 15.0,
+    current_temperature: float = 19.5,
+) -> LivingRoom:
+    """Add the living room with comfort 21 °C and eco 17 °C."""
+    schedule = await schedules.create("Wohnzimmer", monday=[block("07:00", "09:00")])
+    trv = await simulated_trvs.add(
+        "trv_wohnzimmer",
+        hvac_mode=trv_mode,
+        target_temperature=trv_temperature,
+        current_temperature=current_temperature,
+    )
+    area = ar.async_get(hass).async_create("Wohnzimmer")
+    entry = await add_main_entry(hass)
+    subentry = await add_room(
+        hass,
+        entry,
+        name="Wohnzimmer",
+        trv=trv.entity_id,
+        schedule=schedule,
+        area=area.id,
+        comfort_temperature=21.0,
+        eco_temperature=17.0,
+    )
+    return LivingRoom(entry, subentry, trv, schedule)
+
+
+def commands(trv: SimulatedTrv) -> list[tuple[str, dict[str, Any]]]:
+    """Return the `climate` actions a TRV received as (service, data)."""
+    return [(call.service, call.data) for call in trv.calls]
+
+
+HEAT_21 = ("set_temperature", {"temperature": 21.0, "hvac_mode": "heat"})
+HEAT_17 = ("set_temperature", {"temperature": 17.0, "hvac_mode": "heat"})
 
 
 async def change_room(

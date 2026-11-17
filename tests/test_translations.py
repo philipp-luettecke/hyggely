@@ -58,6 +58,37 @@ async def test_options_dialog_is_labelled_in_the_language(
     assert all(texts.get(f"{prefix}.data.{key}") for key in SETTINGS)
 
 
+ROOM_SETTINGS = [
+    "name",
+    "trvs",
+    "schedule",
+    "comfort_temperature",
+    "eco_temperature",
+    "area",
+]
+
+
+@pytest.mark.parametrize(
+    ("language", "entry_type", "trv_label"),
+    [("en", "Room", "Radiator thermostat"), ("de", "Raum", "Heizkörperthermostat")],
+)
+async def test_room_dialogs_are_labelled_in_the_language(
+    hass: HomeAssistant, language: str, entry_type: str, trv_label: str
+) -> None:
+    """Adding and changing a room show a label for every room setting."""
+    prefix = f"component.{DOMAIN}.config_subentries.room"
+
+    texts = await async_get_translations(hass, language, "config_subentries", [DOMAIN])
+
+    assert texts[f"{prefix}.entry_type"] == entry_type
+    assert texts[f"{prefix}.initiate_flow.user"]
+    for step in ("user", "reconfigure"):
+        assert texts[f"{prefix}.step.{step}.data.trvs"] == trv_label
+        assert all(
+            texts.get(f"{prefix}.step.{step}.data.{key}") for key in ROOM_SETTINGS
+        )
+
+
 @pytest.mark.parametrize(
     ("language", "earliest_label"),
     [
