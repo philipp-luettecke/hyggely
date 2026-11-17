@@ -179,11 +179,10 @@ class RoomSubentryFlow(ConfigSubentryFlow):
     ) -> SubentryFlowResult:
         """Ask for the settings of a new room."""
         errors: dict[str, str] = {}
-        if user_input is not None:
-            if not (errors := _room_errors(user_input)):
-                return self.async_create_entry(
-                    title=user_input[CONF_NAME], data=_room_data(user_input)
-                )
+        if user_input is not None and not (errors := _room_errors(user_input)):
+            return self.async_create_entry(
+                title=user_input[CONF_NAME], data=_room_data(user_input)
+            )
         return self.async_show_form(
             step_id="user",
             data_schema=self.add_suggested_values_to_schema(
@@ -198,14 +197,13 @@ class RoomSubentryFlow(ConfigSubentryFlow):
         """Show the room settings prefilled with the current values."""
         subentry = self._get_reconfigure_subentry()
         errors: dict[str, str] = {}
-        if user_input is not None:
-            if not (errors := _room_errors(user_input)):
-                return self.async_update_and_abort(
-                    self._get_entry(),
-                    subentry,
-                    title=user_input[CONF_NAME],
-                    data=_room_data(user_input),
-                )
+        if user_input is not None and not (errors := _room_errors(user_input)):
+            return self.async_update_and_abort(
+                self._get_entry(),
+                subentry,
+                title=user_input[CONF_NAME],
+                data=_room_data(user_input),
+            )
         current = user_input or {**subentry.data, CONF_NAME: subentry.title}
         return self.async_show_form(
             step_id="reconfigure",

@@ -7,6 +7,7 @@ from collections import deque
 from collections.abc import Callable
 from datetime import datetime, timedelta
 from functools import partial
+from statistics import fmean
 
 from homeassistant.components.climate import (
     ATTR_CURRENT_TEMPERATURE,
@@ -16,13 +17,7 @@ from homeassistant.components.climate import (
     SERVICE_SET_TEMPERATURE,
 )
 from homeassistant.config_entries import ConfigEntry, ConfigSubentry
-from homeassistant.const import (
-    ATTR_ENTITY_ID,
-    ATTR_NAME,
-    ATTR_TEMPERATURE,
-    STATE_UNAVAILABLE,
-    STATE_UNKNOWN,
-)
+from homeassistant.const import ATTR_ENTITY_ID, ATTR_NAME, ATTR_TEMPERATURE
 from homeassistant.core import (
     CALLBACK_TYPE,
     CoreState,
@@ -137,8 +132,9 @@ class RoomController:
     current target again, deviating or not. These resends and the first commands
     while Home Assistant starts go through the command pacer, one after another.
     The override detector classifies what the TRVs report in between: an
-    external change becomes an override, or room off if the TRV was switched off;
-    a command the TRV did not take is sent once more.
+    external change at any TRV becomes an override, or room off if the TRV was
+    switched off, and the other TRVs of the room follow; a command the TRV did
+    not take is sent once more.
     """
 
     def __init__(  # noqa: PLR0913
@@ -252,15 +248,21 @@ class RoomController:
 
     @property
     def current_temperature(self) -> float | None:
-        """Return the current temperature reported by the TRV."""
-        for trv in self._trvs:
-            state = self._hass.states.get(trv)
-            if state is None or state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN):
-                continue
-            value = state.attributes.get(ATTR_CURRENT_TEMPERATURE)
-            if isinstance(value, int | float):
-                return float(value)
-        return None
+        """Return the mean current temperature of the TRVs taking commands.
+
+        The others show frozen values: on a bridge outage and until fresh values
+        arrive after it (ticket 01).
+        """
+        temperatures = [
+            float(value)
+            for trv in self._trvs
+            if self._reachability.takes_commands(trv)
+            and (state := self._hass.states.get(trv)) is not None
+            and isinstance(
+                value := state.attributes.get(ATTR_CURRENT_TEMPERATURE), int | float
+            )
+        ]
+        return fmean(temperatures) if temperatures else None
 
     @property
     def offline_trvs(self) -> frozenset[str]:
@@ -279,7 +281,9 @@ class RoomController:
             await self._schedule.async_track(self._async_request_evaluation)
         )
         self._unsubscribers.append(
-            async_track_state_change_event(self._hass, self._trvs, self._trv_changed)
+            async_track_state_change_event(
+                self._hass, self._reachability.entities, self._trv_changed
+            )
         )
         self._unsubscribers.append(
             self._presence.async_add_listener(self._async_request_evaluation)
