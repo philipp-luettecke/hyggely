@@ -19,6 +19,8 @@ from .const import DOMAIN, TEMPERATURE_STEP, TRV_MAX_TEMPERATURE, TRV_MIN_TEMPER
 from .room_controller import RoomController
 from .target_resolver import RoomMode
 
+ATTR_LEVEL = "level"
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -69,6 +71,11 @@ class RoomClimate(ClimateEntity):
     def native_current_temperature(self) -> float | None:
         """Return the current temperature of the room."""
         return self._controller.current_temperature
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return the active level."""
+        return {ATTR_LEVEL: self._controller.level}
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
         """Override the room with the new temperature."""

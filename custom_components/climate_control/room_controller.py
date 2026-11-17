@@ -99,6 +99,11 @@ class RoomController:
         return self._decision.target_temperature if self._decision else None
 
     @property
+    def level(self) -> Level | None:
+        """Return the level that sets the target, None for an override."""
+        return self._decision.level if self._decision else None
+
+    @property
     def current_temperature(self) -> float | None:
         """Return the current temperature reported by the TRV."""
         for trv in self._trvs:
