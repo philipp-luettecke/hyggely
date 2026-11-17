@@ -87,14 +87,18 @@
             "schedule": "Schedule",
             "comfort_temperature": "Comfort temperature",
             "eco_temperature": "Eco temperature",
-            "area": "Area"
+            "area": "Area",
+            "override_expiry_policy": "Override expiry",
+            "override_expiry_duration": "Override duration"
           },
           "data_description": {
             "trvs": "The radiator thermostat (TRV) this room controls.",
             "schedule": "Schedule helper of the room. Comfort applies during its blocks, eco outside.",
             "comfort_temperature": "Target temperature during a block of the schedule.",
             "eco_temperature": "Target temperature outside the blocks of the schedule.",
-            "area": "The room appears as a device in this area."
+            "area": "The room appears as a device in this area.",
+            "override_expiry_policy": "When a manual override in this room returns to the schedule.",
+            "override_expiry_duration": "Leave empty to use the global override duration."
           }
         },
         "reconfigure": {
@@ -105,14 +109,18 @@
             "schedule": "Schedule",
             "comfort_temperature": "Comfort temperature",
             "eco_temperature": "Eco temperature",
-            "area": "Area"
+            "area": "Area",
+            "override_expiry_policy": "Override expiry",
+            "override_expiry_duration": "Override duration"
           },
           "data_description": {
             "trvs": "The radiator thermostat (TRV) this room controls.",
             "schedule": "Schedule helper of the room. Comfort applies during its blocks, eco outside.",
             "comfort_temperature": "Target temperature during a block of the schedule.",
             "eco_temperature": "Target temperature outside the blocks of the schedule.",
-            "area": "The room appears as a device in this area."
+            "area": "The room appears as a device in this area.",
+            "override_expiry_policy": "When a manual override in this room returns to the schedule.",
+            "override_expiry_duration": "Leave empty to use the global override duration."
           }
         }
       },
@@ -124,6 +132,7 @@
   "selector": {
     "override_expiry_policy": {
       "options": {
+        "global": "Global setting",
         "next_block": "At the next block boundary",
         "duration": "After duration",
         "earliest": "Earlier of next block boundary and duration"

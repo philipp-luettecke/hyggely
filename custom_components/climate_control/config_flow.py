@@ -47,6 +47,7 @@ from .const import (
     DEFAULT_VACATION_TEMPERATURE,
     DEFAULT_WINDOW_DELAY,
     DOMAIN,
+    OVERRIDE_EXPIRY_GLOBAL,
     OVERRIDE_EXPIRY_POLICIES,
     SUBENTRY_TYPE_ROOM,
     TEMPERATURE_STEP,
@@ -129,6 +130,17 @@ def _room_schema() -> probatio.Schema:
                 CONF_ECO_TEMPERATURE, default=DEFAULT_ECO_TEMPERATURE
             ): _temperature_selector(),
             probatio.Required(CONF_AREA): selector.AreaSelector(),
+            probatio.Required(
+                CONF_OVERRIDE_EXPIRY_POLICY, default=OVERRIDE_EXPIRY_GLOBAL
+            ): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=[OVERRIDE_EXPIRY_GLOBAL, *OVERRIDE_EXPIRY_POLICIES],
+                    translation_key=CONF_OVERRIDE_EXPIRY_POLICY,
+                )
+            ),
+            probatio.Optional(
+                CONF_OVERRIDE_EXPIRY_DURATION
+            ): selector.DurationSelector(),
         }
     )
 

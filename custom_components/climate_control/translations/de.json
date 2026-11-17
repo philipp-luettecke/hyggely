@@ -87,14 +87,18 @@
             "schedule": "Zeitplan",
             "comfort_temperature": "Komfort-Temperatur",
             "eco_temperature": "Eco-Temperatur",
-            "area": "Bereich"
+            "area": "Bereich",
+            "override_expiry_policy": "Rückfall",
+            "override_expiry_duration": "Dauer der Übersteuerung"
           },
           "data_description": {
             "trvs": "Das Heizkörperthermostat, das dieser Raum steuert.",
             "schedule": "Zeitplan-Helfer des Raums. Während seiner Blöcke gilt Komfort, sonst Eco.",
             "comfort_temperature": "Solltemperatur während eines Blocks im Zeitplan.",
             "eco_temperature": "Solltemperatur außerhalb der Blöcke im Zeitplan.",
-            "area": "Der Raum erscheint als Gerät in diesem Bereich."
+            "area": "Der Raum erscheint als Gerät in diesem Bereich.",
+            "override_expiry_policy": "Wann eine manuelle Übersteuerung in diesem Raum zum Zeitplan zurückkehrt.",
+            "override_expiry_duration": "Leer lassen, um die globale Dauer der Übersteuerung zu verwenden."
           }
         },
         "reconfigure": {
@@ -105,14 +109,18 @@
             "schedule": "Zeitplan",
             "comfort_temperature": "Komfort-Temperatur",
             "eco_temperature": "Eco-Temperatur",
-            "area": "Bereich"
+            "area": "Bereich",
+            "override_expiry_policy": "Rückfall",
+            "override_expiry_duration": "Dauer der Übersteuerung"
           },
           "data_description": {
             "trvs": "Das Heizkörperthermostat, das dieser Raum steuert.",
             "schedule": "Zeitplan-Helfer des Raums. Während seiner Blöcke gilt Komfort, sonst Eco.",
             "comfort_temperature": "Solltemperatur während eines Blocks im Zeitplan.",
             "eco_temperature": "Solltemperatur außerhalb der Blöcke im Zeitplan.",
-            "area": "Der Raum erscheint als Gerät in diesem Bereich."
+            "area": "Der Raum erscheint als Gerät in diesem Bereich.",
+            "override_expiry_policy": "Wann eine manuelle Übersteuerung in diesem Raum zum Zeitplan zurückkehrt.",
+            "override_expiry_duration": "Leer lassen, um die globale Dauer der Übersteuerung zu verwenden."
           }
         }
       },
@@ -124,6 +132,7 @@
   "selector": {
     "override_expiry_policy": {
       "options": {
+        "global": "Globale Einstellung",
         "next_block": "Am nächsten Schaltpunkt",
         "duration": "Nach Dauer",
         "earliest": "Früheres von nächstem Schaltpunkt und Dauer"

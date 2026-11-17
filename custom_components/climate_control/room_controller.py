@@ -41,6 +41,7 @@ from .const import (
     CONF_OVERRIDE_EXPIRY_POLICY,
     CONF_SCHEDULE,
     CONF_TRVS,
+    OVERRIDE_EXPIRY_GLOBAL,
 )
 from .schedule_reader import ScheduleReader
 from .target_resolver import (
@@ -54,6 +55,19 @@ from .target_resolver import (
     mode_expires_at,
     resolve,
 )
+
+
+def _override_expiry(entry: ConfigEntry, subentry: ConfigSubentry) -> OverrideExpiry:
+    """Return the override expiry rule of a room; room settings beat global ones."""
+    policy = subentry.data.get(CONF_OVERRIDE_EXPIRY_POLICY, OVERRIDE_EXPIRY_GLOBAL)
+    if policy == OVERRIDE_EXPIRY_GLOBAL:
+        policy = entry.options[CONF_OVERRIDE_EXPIRY_POLICY]
+    duration = subentry.data.get(
+        CONF_OVERRIDE_EXPIRY_DURATION, entry.options[CONF_OVERRIDE_EXPIRY_DURATION]
+    )
+    return OverrideExpiry(
+        policy=OverrideExpiryPolicy(policy), duration=timedelta(**duration)
+    )
 
 
 class RoomController:
@@ -79,10 +93,7 @@ class RoomController:
             Level.ECO: float(subentry.data[CONF_ECO_TEMPERATURE]),
         }
         self._frost_temperature = float(entry.options[CONF_FROST_TEMPERATURE])
-        self._override_expiry = OverrideExpiry(
-            policy=OverrideExpiryPolicy(entry.options[CONF_OVERRIDE_EXPIRY_POLICY]),
-            duration=timedelta(**entry.options[CONF_OVERRIDE_EXPIRY_DURATION]),
-        )
+        self._override_expiry = _override_expiry(entry, subentry)
         self._room_mode = RoomMode.AUTO
         self._override_temperature: float | None = None
         self._mode_expires_at: datetime | None = None
