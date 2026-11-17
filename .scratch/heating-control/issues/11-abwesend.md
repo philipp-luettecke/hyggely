@@ -6,7 +6,7 @@ Spec: `.scratch/heating-control/spec.md`
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Eine globale Entität zeigt, ob Abwesend gilt
 - [ ] Abwesend gilt erst, wenn alle Personen länger als die Verzögerung weg sind
@@ -29,3 +29,5 @@ Spec: `.scratch/heating-control/spec.md`
 **Grund:** Der Target Resolver liefert `ReasonCode.AWAY = "away"` ohne Parameter. Den Grund-Sensor gab es beim Abschluss noch nicht (Ticket 05 läuft parallel), deshalb prüft noch kein Test den Text „Abwesend“. Wer 05 mit 11 zusammenführt, sollte in `tests/test_away.py` den Grund-Sensor im ersten Szenario mitprüfen.
 
 **Tests:** `tests/test_away.py` mit echten `person`-Entitäten, die einem `device_tracker` pro Handy folgen (Fixture `persons`, `tests/scenario.py: Persons`). Neu in `scenario.py` sind außerdem `change_global_settings` (Optionsdialog des Haupteintrags) und `away_state`. In `pyproject.toml` ist für Tests zusätzlich `PLR0917` abgeschaltet (Fixtures als Positionsargumente), analog zu `PLR0913`.
+
+**Abgeschlossen:** Merge-Commit `0d53a5a` auf `feat/heating-control`. Ergebnis: globales Abwesend mit Verzögerung und `binary_sensor` am Gerät „Haus“; Räume in Auto erhalten die Abwesend-Temperatur; 41 Tests grün.
