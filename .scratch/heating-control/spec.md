@@ -98,7 +98,7 @@ Fenster offen, Abwesenheit und Urlaub greifen automatisch. Benachrichtigungen gi
 49. Als Admin möchte ich, dass ein TRV, das länger als 30 Minuten nicht erreichbar ist, unter Reparaturen erscheint, damit ich davon erfahre.
 50. Als Admin möchte ich, dass ein nicht erreichbarer Fensterkontakt als „geschlossen“ gilt, damit ein leerer Akku nicht dauerhaft die Heizung abschaltet.
 51. Als Admin möchte ich, dass eine unbekannte Anwesenheit als „zu Hause“ gilt, damit es im Zweifel nicht kalt wird.
-52. Als Admin möchte ich, dass ein TRV, das nach einem Befehl von selbst wieder auf „Aus“ springt, erkannt und korrigiert wird, damit tado-Eigenheiten den Raum nicht kalt lassen.
+52. Als Admin möchte ich, dass ein Befehl, den das TRV nicht übernommen hat, erkannt und einmal wiederholt wird, damit tado-Eigenheiten den Raum nicht kalt lassen.
 53. Als Admin möchte ich, dass die Integration nach einem Neustart von Home Assistant ohne Befehlsflut wieder in den korrekten Zustand findet, damit TRVs und Bridge nicht überlastet werden.
 
 ### Benachrichtigungen
@@ -185,13 +185,16 @@ Fenster offen, Abwesenheit und Urlaub greifen automatisch. Benachrichtigungen gi
    - Abonniert alle Eingaben und hält Übersteuerung und Rückfall.
    - Ruft den Target Resolver auf, plant Neubewertungen zum gelieferten Zeitpunkt und sendet Befehle an die TRVs.
    - Sendet nur bei Abweichung zwischen Soll- und Ist-Zustand des TRV.
-   - Bei `heat` gehen Modus und Temperatur immer gemeinsam raus, als Schutz vor der tado-Eigenheit, nach einem Temperaturbefehl auf „Aus“ zurückzuspringen.
-   - Nach einem Befehl prüft er den Zustand des TRV und korrigiert begrenzt oft.
-   - Wird ein TRV wieder verfügbar, sendet er den Sollzustand erneut. Nach einem Neustart sendet er gedrosselt, also gestaffelt und nicht alle gleichzeitig.
+   - Bei `heat` gehen Modus und Temperatur immer gemeinsam raus. Ein ausgeschaltetes TRV ignoriert eine Temperatur ohne Modus stillschweigend (Ticket 01).
+   - Ein TRV gilt als nicht erreichbar, wenn seine `climate`-Entität **oder** der Temperatursensor desselben Geräts `unavailable` ist. Bei einem Ausfall der Bridge friert die `climate`-Entität nur ein und wird nicht `unavailable` (Ticket 01).
+   - Wird ein TRV wieder erreichbar, sendet er den Sollzustand erneut, sobald ein gültiger Modus gemeldet wird. Nach einem Neustart sendet er gedrosselt, also gestaffelt und nicht alle gleichzeitig.
 4. **Override Detector**
    - Klassifiziert Zustandsänderungen der TRVs als Echo oder externe Änderung.
-   - Kombiniert dafür die eigenen Kontext-IDs mit einem Abgleich der Werte gegen kürzlich gesendete Befehle, ein Echo-Fenster und eine Entprellung. Grund: Home Assistant ordnet Zustandsänderungen bis 5 s nach einem Befehl dem Kontext dieses Befehls zu.
-   - Die Parameter (Echo-Fenster, Entprellung) kommen aus dem Messprotokoll an der echten Hardware (Ticket 01).
+   - Gemessen (Ticket 01): Ein eigener Befehl erscheint sofort (< 0,2 s) im Zustand des TRV, mit dem eigenen Kontext, und es gibt keine späteren Echos. Eine Drehung am Knopf kommt erst mit der nächsten Minutenabfrage von Home Assistant an (bis ca. 61 s), nur mit dem Endwert und mit einem neuen Kontext ohne `user_id`/`parent_id`.
+   - Regel: Eine Änderung, die vom zuletzt gesendeten Sollzustand abweicht, ist eine externe Änderung. Entprellung und Echo-Fenster sind nicht nötig.
+   - Zeigt die erste Abfrage nach einem eigenen Befehl wieder exakt den Zustand vor dem Befehl, gilt der Befehl als nicht übernommen. Dann wird einmal erneut gesendet, und es entsteht keine Übersteuerung.
+   - Ausschalten am Gerät wird wie Aus am Raum-Thermostat behandelt.
+   - Werte im Modus `off` (`temperature: null`, min/max 7/35) und ein kurzzeitig gemeldeter Modus `None` sind keine Änderungen.
    - Eine externe Änderung an irgendeinem TRV eines Raums wird zur Übersteuerung des ganzen Raums. Die übrigen TRVs werden synchronisiert.
    - Änderungen über die HomeKit-Bridge, Google oder die HA-Oberfläche kommen als Aufruf an das Raum-Thermostat an und brauchen keine Erkennung.
 5. **Window and Presence Inputs**
@@ -239,7 +242,13 @@ Fenster offen, Abwesenheit und Urlaub greifen automatisch. Benachrichtigungen gi
   - Ein Test richtet den Haupteintrag und die Räume ein. Beteiligt sind simulierte TRV-Entitäten (Zustände plus abgefangene `climate`-Aufrufe), echte native Zeitplan-Helfer, Fensterkontakte und Personen.
   - Danach verändert der Test Zustände oder spult die Zeit vor.
   - Er prüft ausschließlich von außen beobachtbares Verhalten: Zustand und Attribute des Raum-Thermostats, Grund-Sensor, gesendete Befehle an die TRVs, Benachrichtigungen, Reparaturhinweise und Antworten der Panel API.
-- **Simulierte TRVs bilden das gemessene tado-Verhalten nach.** Dazu gehören das Echo nach einem Befehl, Verzögerungen, das Zurückspringen auf „Aus“ und Nichterreichbarkeit. Die Simulation wird mit den Ergebnissen aus Ticket 01 abgeglichen.
+- **Simulierte TRVs bilden das in Ticket 01 gemessene tado-Verhalten nach:**
+  - sofortige Übernahme eigener Befehle
+  - Drehungen am Knopf erst im Minutentakt der Abfrage, nur mit dem Endwert
+  - Ignorieren einer Temperatur ohne Modus im ausgeschalteten Zustand
+  - `temperature: null` im Modus `off`
+  - Einfrieren statt `unavailable` bei einem Ausfall der Bridge, mit `unavailable` Temperatursensor
+  - verzögerte Rückkehr mit kurzzeitig ungültigem Modus
 - **Die Rangfolge der Regeln wird über viele kleine Szenarien an dieser Schnittstelle abgedeckt**, nicht über eine zweite Testebene direkt am Target Resolver.
 - **Gute Tests** prüfen Verhalten statt Implementierung. Ein Test benennt ein Alltagsszenario mit den Begriffen aus dem Glossar, z. B. „Fenster offen während Übersteuerung stellt Übersteuerung nach Schließen wieder her“. Tests greifen nicht auf interne Zustände des Room Controllers zu.
 - **Zeit** wird über die Zeitsteuerung des Test-Frameworks vorgespult, nicht über echte Wartezeiten.
@@ -256,21 +265,21 @@ Fenster offen, Abwesenheit und Urlaub greifen automatisch. Benachrichtigungen gi
 - Schaltaktoren (`switch`) als Aktoren
 - Fenstererkennung über einen Temperatursturz
 - Bearbeitung von Zeitplänen durch Nicht-Admins
-- Batterie-Benachrichtigungen, solange unklar ist, ob tado über HomeKit einen Batteriestand liefert (Ticket 01)
+- Batterie-Benachrichtigungen: tado liefert über HomeKit keinen Batteriestand (Ticket 01)
 - Nabu Casa und eine spezielle Google-Home-Anpassung über das reine Durchreichen hinaus
 - Automatisierte Oberflächentests des Panels
 - Eine eigene Dashboard-Karte neben dem Panel
 
 ## Further Notes
 
-- **Ticket 01 ist ein Messprotokoll an der echten Hardware** (`ready-for-human`). Ermittelt werden:
-  - die Attribute der TRV-Entität (Modi, kleinste und größte Temperatur, Schrittweite, Luftfeuchte, Batterie)
-  - die Zeit von einer Drehung am Knopf bis zur Zustandsänderung in Home Assistant
-  - das Echo nach einem Befehl
-  - ob das TRV nach einem Temperaturbefehl auf „Aus“ zurückspringt
-  - wie sich ein Stromausfall der Bridge zeigt
-
-  Das Ergebnis legt die Parameter des Override Detector fest und blockiert dessen Ticket.
+- **Das Messprotokoll an der echten Hardware (Ticket 01) ist abgeschlossen.** Ergebnisse:
+  - TRVs bieten `off`/`heat` mit 5–25 °C und Luftfeuchte, aber keinen Batteriestand.
+  - Home Assistant fragt sie nur im Minutentakt ab und erhält keine Push-Meldungen.
+  - Eigene Befehle erzeugen keine Echos.
+  - Bei einem Ausfall der Bridge friert die `climate`-Entität ein, statt `unavailable` zu werden.
+  
+  Die Folgerungen stehen in den Modulen Room Controller und Override Detector sowie in den Tickets 08 und 13.
+- **Offen: Schrittweite.** Ob sich per Befehl halbe Grad setzen lassen, ist ungeprüft. Der Knopf arbeitet in 1-°C-Schritten. Bis zur Klärung gilt 0,5 °C.
 - **Das Panel wird nach dem ersten Sichten durch den Haushalt nachgeschärft.** Der Prototyp ist dafür ein eigener Abstimmungsschritt.
 - **Offen: Anzahl der Räume.** Sie ist nicht blockierend und dient nur der Abschätzung. Mehrere TRVs pro Raum werden unterstützt.
 - Die Test-Schnittstelle wird nach den ersten Tickets mit dem Admin noch einmal angeschaut.

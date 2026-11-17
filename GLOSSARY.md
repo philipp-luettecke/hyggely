@@ -15,7 +15,7 @@ Code, tests and docs use the **Term**. The UI shows the **German label**.
 | Room mode | Modus | The room entity's HVAC mode: `auto` (follow schedule), `heat` (override active), `off` (frost protection). |
 | Override | Manuelle Übersteuerung | A setpoint chosen by a person (knob, Siri, Google, HA app, panel). Puts the room into `heat` until it expires. |
 | External change | Externe Änderung | A TRV state change not caused by this integration, e.g. a knob turn. Detected, then turned into an override. |
-| Echo | Echo | A TRV state change that is the device reporting back a command this integration sent. Must not become an override. |
+| Echo | Echo | The immediate TRV state update (< 0.2 s) that reflects a command this integration sent. tado sends no later echoes. Must not become an override. |
 | Override expiry | Rückfall | When a room returns to `auto`. Policy per room: `next_block`, `duration`, or `earliest` (default, 3 h). `off` always returns at the next block boundary. |
 | House mode | Hausbetriebsart | Global mode: `auto`, `vacation` (with end time), `off`. |
 | Away | Abwesend | Derived state: all configured persons not home for the presence delay. Not a house mode. |

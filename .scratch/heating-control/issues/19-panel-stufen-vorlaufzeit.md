@@ -10,7 +10,7 @@ Spec: `.scratch/heating-control/spec.md`
 
 - [ ] Pro Raum lassen sich Komfort, Nacht, Eco und Vorlaufzeit im Panel ändern
 - [ ] Die globalen Temperaturen für Abwesend, Urlaub und Frostschutz lassen sich im Panel ändern
-- [ ] Die Werte sind auf den Bereich und die Schrittweite der TRVs begrenzt (laut Ticket 01)
+- [ ] Die Werte sind auf den Bereich der TRVs begrenzt (5–25 °C laut Ticket 01). Die Schrittweite folgt dem Stand in der Spec (Further Notes)
 - [ ] Änderungen erscheinen danach auch im Optionsdialog der Integration
 - [ ] Änderungen wirken sofort auf die Solltemperatur des Raums
 - [ ] Tests im Test-Home-Assistant decken die Panel API ab, das Panel ist per Checkliste abgenommen
