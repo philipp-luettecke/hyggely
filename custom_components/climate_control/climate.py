@@ -20,6 +20,7 @@ from .room_controller import RoomController
 from .target_resolver import RoomMode
 
 ATTR_LEVEL = "level"
+ATTR_NEXT_BLOCK_BOUNDARY = "next_block_boundary"
 
 
 async def async_setup_entry(
@@ -74,8 +75,11 @@ class RoomClimate(ClimateEntity):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Return the active level."""
-        return {ATTR_LEVEL: self._controller.level}
+        """Return the active level and the next block boundary."""
+        return {
+            ATTR_LEVEL: self._controller.level,
+            ATTR_NEXT_BLOCK_BOUNDARY: self._controller.next_block_boundary,
+        }
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
         """Override the room with the new temperature."""

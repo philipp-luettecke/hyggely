@@ -89,6 +89,7 @@ class RoomController:
         self._override_temperature: float | None = None
         self._mode_expires_at: datetime | None = None
         self._decision: Decision | None = None
+        self._next_block_boundary: datetime | None = None
         self._listeners: list[Callable[[], None]] = []
         self._unsubscribers: list[CALLBACK_TYPE] = []
         self._cancel_reevaluation: CALLBACK_TYPE | None = None
@@ -108,6 +109,11 @@ class RoomController:
     def level(self) -> Level | None:
         """Return the level that sets the target, None for an override."""
         return self._decision.level if self._decision else None
+
+    @property
+    def next_block_boundary(self) -> datetime | None:
+        """Return when the level from the schedule changes next, lead time included."""
+        return self._next_block_boundary
 
     @property
     def current_temperature(self) -> float | None:
@@ -199,6 +205,7 @@ class RoomController:
             schedule = self._schedule.read()
             if schedule is None:
                 return
+            self._next_block_boundary = schedule.next_block_boundary
             now = dt_util.utcnow()
             decision = resolve(
                 RoomSnapshot(

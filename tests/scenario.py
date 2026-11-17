@@ -51,7 +51,7 @@ class Clock:
 
 
 def block(start: str, end: str, level: str | None = None) -> dict[str, Any]:
-    """Return a schedule block from `start` to `end` (HH:MM), optionally with a level."""
+    """Return a schedule block from `start` to `end` (HH:MM) with an optional level."""
     result: dict[str, Any] = {"from": f"{start}:00", "to": f"{end}:00"}
     if level is not None:
         result["data"] = {"level": level}

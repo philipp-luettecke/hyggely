@@ -182,11 +182,7 @@ def _schedule_level(
         }
     )
     next_block_boundary = next(
-        (
-            moment
-            for moment in moments
-            if _level_at(blocks, moment, lead_time) != level
-        ),
+        (moment for moment in moments if _level_at(blocks, moment, lead_time) != level),
         None,
     )
     return ScheduleLevel(level=level, next_block_boundary=next_block_boundary)
