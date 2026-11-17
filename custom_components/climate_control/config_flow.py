@@ -8,8 +8,9 @@ from homeassistant.config_entries import (
     ConfigEntry,
     ConfigFlow,
     ConfigFlowResult,
+    ConfigSubentryFlow,
     OptionsFlow,
-    OptionsFlowWithReload,
+    SubentryFlowResult,
 )
 from homeassistant.const import UnitOfTemperature
 from homeassistant.core import callback
@@ -17,19 +18,27 @@ from homeassistant.helpers import selector
 import probatio
 
 from .const import (
+    CONF_AREA,
     CONF_AWAY_DELAY,
     CONF_AWAY_TEMPERATURE,
+    CONF_COMFORT_TEMPERATURE,
+    CONF_ECO_TEMPERATURE,
     CONF_FROST_TEMPERATURE,
+    CONF_NAME,
     CONF_NOTIFY_TARGETS,
     CONF_OVERRIDE_EXPIRY_DURATION,
     CONF_OVERRIDE_EXPIRY_POLICY,
     CONF_PERSONS,
     CONF_QUIET_END,
     CONF_QUIET_START,
+    CONF_SCHEDULE,
+    CONF_TRVS,
     CONF_VACATION_TEMPERATURE,
     CONF_WINDOW_DELAY,
     DEFAULT_AWAY_DELAY,
     DEFAULT_AWAY_TEMPERATURE,
+    DEFAULT_COMFORT_TEMPERATURE,
+    DEFAULT_ECO_TEMPERATURE,
     DEFAULT_FROST_TEMPERATURE,
     DEFAULT_OVERRIDE_EXPIRY_DURATION,
     DEFAULT_OVERRIDE_EXPIRY_POLICY,
@@ -39,6 +48,7 @@ from .const import (
     DEFAULT_WINDOW_DELAY,
     DOMAIN,
     OVERRIDE_EXPIRY_POLICIES,
+    SUBENTRY_TYPE_ROOM,
     TEMPERATURE_STEP,
     TRV_MAX_TEMPERATURE,
     TRV_MIN_TEMPERATURE,
@@ -102,10 +112,82 @@ def _global_settings_schema() -> probatio.Schema:
     )
 
 
+def _room_schema() -> probatio.Schema:
+    return probatio.Schema(
+        {
+            probatio.Required(CONF_NAME): selector.TextSelector(),
+            probatio.Required(CONF_TRVS): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="climate")
+            ),
+            probatio.Required(CONF_SCHEDULE): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="schedule")
+            ),
+            probatio.Required(
+                CONF_COMFORT_TEMPERATURE, default=DEFAULT_COMFORT_TEMPERATURE
+            ): _temperature_selector(),
+            probatio.Required(
+                CONF_ECO_TEMPERATURE, default=DEFAULT_ECO_TEMPERATURE
+            ): _temperature_selector(),
+            probatio.Required(CONF_AREA): selector.AreaSelector(),
+        }
+    )
+
+
+def _room_data(user_input: dict[str, Any]) -> dict[str, Any]:
+    """Store the room settings; a room keeps a list of TRVs."""
+    data = {key: value for key, value in user_input.items() if key != CONF_NAME}
+    data[CONF_TRVS] = [user_input[CONF_TRVS]]
+    return data
+
+
+class RoomSubentryFlow(ConfigSubentryFlow):
+    """Add or change a room of the main entry."""
+
+    async def async_step_user(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
+        """Ask for the settings of a new room."""
+        if user_input is not None:
+            return self.async_create_entry(
+                title=user_input[CONF_NAME], data=_room_data(user_input)
+            )
+        return self.async_show_form(step_id="user", data_schema=_room_schema())
+
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
+        """Show the room settings prefilled with the current values."""
+        subentry = self._get_reconfigure_subentry()
+        if user_input is not None:
+            return self.async_update_and_abort(
+                self._get_entry(),
+                subentry,
+                title=user_input[CONF_NAME],
+                data=_room_data(user_input),
+            )
+        current = {
+            **subentry.data,
+            CONF_NAME: subentry.title,
+            CONF_TRVS: subentry.data[CONF_TRVS][0],
+        }
+        return self.async_show_form(
+            step_id="reconfigure",
+            data_schema=self.add_suggested_values_to_schema(_room_schema(), current),
+        )
+
+
 class ClimateControlConfigFlow(ConfigFlow, domain=DOMAIN):
     """Create the main entry holding the global settings."""
 
     VERSION = 1
+
+    @classmethod
+    @callback
+    def async_get_supported_subentry_types(
+        cls, config_entry: ConfigEntry
+    ) -> dict[str, type[ConfigSubentryFlow]]:
+        """Rooms are subentries of the main entry."""
+        return {SUBENTRY_TYPE_ROOM: RoomSubentryFlow}
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -126,8 +208,8 @@ class ClimateControlConfigFlow(ConfigFlow, domain=DOMAIN):
         return ClimateControlOptionsFlow()
 
 
-class ClimateControlOptionsFlow(OptionsFlowWithReload):
-    """Change the global settings of the main entry."""
+class ClimateControlOptionsFlow(OptionsFlow):
+    """Change the global settings of the main entry; its update listener reloads."""
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None

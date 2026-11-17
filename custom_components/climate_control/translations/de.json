@@ -70,6 +70,57 @@
       }
     }
   },
+  "config_subentries": {
+    "room": {
+      "entry_type": "Raum",
+      "initiate_flow": {
+        "user": "Raum hinzufügen",
+        "reconfigure": "Raum ändern"
+      },
+      "step": {
+        "user": {
+          "title": "Raum hinzufügen",
+          "description": "Gib nur die Raum-Thermostate an die HomeKit-Bridge, nicht die Heizkörperthermostate, damit Apple Home pro Raum nur ein Thermostat zeigt.",
+          "data": {
+            "name": "Name",
+            "trvs": "Heizkörperthermostat",
+            "schedule": "Zeitplan",
+            "comfort_temperature": "Komfort-Temperatur",
+            "eco_temperature": "Eco-Temperatur",
+            "area": "Bereich"
+          },
+          "data_description": {
+            "trvs": "Das Heizkörperthermostat, das dieser Raum steuert.",
+            "schedule": "Zeitplan-Helfer des Raums. Während seiner Blöcke gilt Komfort, sonst Eco.",
+            "comfort_temperature": "Solltemperatur während eines Blocks im Zeitplan.",
+            "eco_temperature": "Solltemperatur außerhalb der Blöcke im Zeitplan.",
+            "area": "Der Raum erscheint als Gerät in diesem Bereich."
+          }
+        },
+        "reconfigure": {
+          "title": "Raum ändern",
+          "data": {
+            "name": "Name",
+            "trvs": "Heizkörperthermostat",
+            "schedule": "Zeitplan",
+            "comfort_temperature": "Komfort-Temperatur",
+            "eco_temperature": "Eco-Temperatur",
+            "area": "Bereich"
+          },
+          "data_description": {
+            "trvs": "Das Heizkörperthermostat, das dieser Raum steuert.",
+            "schedule": "Zeitplan-Helfer des Raums. Während seiner Blöcke gilt Komfort, sonst Eco.",
+            "comfort_temperature": "Solltemperatur während eines Blocks im Zeitplan.",
+            "eco_temperature": "Solltemperatur außerhalb der Blöcke im Zeitplan.",
+            "area": "Der Raum erscheint als Gerät in diesem Bereich."
+          }
+        }
+      },
+      "abort": {
+        "reconfigure_successful": "Der Raum wurde geändert."
+      }
+    }
+  },
   "selector": {
     "override_expiry_policy": {
       "options": {

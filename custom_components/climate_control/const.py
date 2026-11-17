@@ -35,6 +35,18 @@ DEFAULT_OVERRIDE_EXPIRY_POLICY: Final = OVERRIDE_EXPIRY_EARLIEST
 DEFAULT_OVERRIDE_EXPIRY_DURATION: Final = {"hours": 3, "minutes": 0, "seconds": 0}
 DEFAULT_WINDOW_DELAY: Final = {"hours": 0, "minutes": 1, "seconds": 0}
 
+SUBENTRY_TYPE_ROOM: Final = "room"
+
+CONF_NAME: Final = "name"
+CONF_TRVS: Final = "trvs"
+CONF_SCHEDULE: Final = "schedule"
+CONF_COMFORT_TEMPERATURE: Final = "comfort_temperature"
+CONF_ECO_TEMPERATURE: Final = "eco_temperature"
+CONF_AREA: Final = "area"
+
+DEFAULT_COMFORT_TEMPERATURE: Final = 21.0
+DEFAULT_ECO_TEMPERATURE: Final = 18.0
+
 TRV_MIN_TEMPERATURE: Final = 5.0
 TRV_MAX_TEMPERATURE: Final = 25.0
 TEMPERATURE_STEP: Final = 0.5
