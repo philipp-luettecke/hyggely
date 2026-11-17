@@ -51,9 +51,17 @@ class Clock:
         await self._hass.async_block_till_done()
 
 
-def block(start: str, end: str) -> dict[str, Any]:
-    """Return a schedule block from `start` to `end` (HH:MM)."""
-    return {"from": f"{start}:00", "to": f"{end}:00"}
+def block(start: str, end: str, level: str | None = None) -> dict[str, Any]:
+    """Return a schedule block from `start` to `end` (HH:MM) with an optional level."""
+    result: dict[str, Any] = {"from": f"{start}:00", "to": f"{end}:00"}
+    if level is not None:
+        result["data"] = {"level": level}
+    return result
+
+
+def duration(minutes: int) -> dict[str, int]:
+    """Return a duration as the duration fields of a dialog take it."""
+    return {"hours": minutes // 60, "minutes": minutes % 60, "seconds": 0}
 
 
 class Schedules:
@@ -128,7 +136,9 @@ def room_settings(subentry: ConfigSubentry) -> dict[str, Any]:
         "trvs": subentry.data["trvs"][0],
         "schedule": subentry.data["schedule"],
         "comfort_temperature": subentry.data["comfort_temperature"],
+        "night_temperature": subentry.data["night_temperature"],
         "eco_temperature": subentry.data["eco_temperature"],
+        "lead_time": subentry.data["lead_time"],
         "area": subentry.data["area"],
         **{key: subentry.data[key] for key in optional if key in subentry.data},
     }
@@ -143,7 +153,9 @@ async def add_room(
     schedule: str,
     area: str,
     comfort_temperature: float = 21.0,
+    night_temperature: float = 16.0,
     eco_temperature: float = 17.0,
+    lead_minutes: int = 0,
 ) -> ConfigSubentry:
     """Add a room through the room dialog of the main entry."""
     result = await hass.config_entries.subentries.async_init(
@@ -157,7 +169,9 @@ async def add_room(
             "trvs": trv,
             "schedule": schedule,
             "comfort_temperature": comfort_temperature,
+            "night_temperature": night_temperature,
             "eco_temperature": eco_temperature,
+            "lead_time": duration(lead_minutes),
             "area": area,
         },
     )
@@ -180,7 +194,7 @@ def room_entity_id(hass: HomeAssistant, subentry: ConfigSubentry) -> str:
 
 @dataclass
 class LivingRoom:
-    """The living room: one TRV, a schedule with a block Monday 07:00-09:00."""
+    """The living room: one TRV and its schedule."""
 
     entry: ConfigEntry
     subentry: ConfigSubentry
@@ -216,10 +230,18 @@ async def living_room(
     trv_mode: str = "heat",
     trv_temperature: float = 15.0,
     current_temperature: float = 19.5,
+    lead_minutes: int = 0,
     global_settings: dict[str, Any] | None = None,
+    **weekdays: list[dict[str, Any]],
 ) -> LivingRoom:
-    """Add the living room with comfort 21 °C and eco 17 °C."""
-    schedule = await schedules.create("Wohnzimmer", monday=[block("07:00", "09:00")])
+    """Add the living room with comfort 21 °C, night 16 °C and eco 17 °C.
+
+    Its schedule has the blocks given per weekday, by default one comfort block
+    Monday 07:00-09:00.
+    """
+    schedule = await schedules.create(
+        "Wohnzimmer", **(weekdays or {"monday": [block("07:00", "09:00")]})
+    )
     trv = await simulated_trvs.add(
         "trv_wohnzimmer",
         hvac_mode=trv_mode,
@@ -236,7 +258,9 @@ async def living_room(
         schedule=schedule,
         area=area.id,
         comfort_temperature=21.0,
+        night_temperature=16.0,
         eco_temperature=17.0,
+        lead_minutes=lead_minutes,
     )
     return LivingRoom(entry, subentry, trv, schedule)
 
@@ -248,6 +272,7 @@ def commands(trv: SimulatedTrv) -> list[tuple[str, dict[str, Any]]]:
 
 HEAT_21 = ("set_temperature", {"temperature": 21.0, "hvac_mode": "heat"})
 HEAT_17 = ("set_temperature", {"temperature": 17.0, "hvac_mode": "heat"})
+HEAT_16 = ("set_temperature", {"temperature": 16.0, "hvac_mode": "heat"})
 
 
 async def change_room(

@@ -19,6 +19,8 @@ from .const import DOMAIN, TEMPERATURE_STEP, TRV_MAX_TEMPERATURE, TRV_MIN_TEMPER
 from .room_controller import RoomController
 from .target_resolver import RoomMode
 
+ATTR_LEVEL = "level"
+ATTR_NEXT_BLOCK_BOUNDARY = "next_block_boundary"
 ATTR_REASON = "reason"
 ATTR_OVERRIDE_EXPIRY = "override_expiry"
 
@@ -75,9 +77,11 @@ class RoomClimate(ClimateEntity):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Return the reason code and when the room returns to auto."""
+        """Return level, next block boundary, reason code and override expiry."""
         reason = self._controller.reason
         return {
+            ATTR_LEVEL: self._controller.level,
+            ATTR_NEXT_BLOCK_BOUNDARY: self._controller.next_block_boundary,
             ATTR_REASON: reason.code if reason else None,
             ATTR_OVERRIDE_EXPIRY: self._controller.mode_expires_at,
         }
