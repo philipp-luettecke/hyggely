@@ -84,7 +84,7 @@ async def test_override_is_given_as_reason_until_auto(
 
     await room.call(hass, "set_hvac_mode", hvac_mode="auto")
     assert room.reason(hass).attributes["reason_code"] == "eco"
-    assert room.state(hass).attributes["reason"] == "schedule"
+    assert room.state(hass).attributes["reason"] == "eco"
 
 
 async def test_next_block_holds_the_override_until_the_next_block_boundary(
