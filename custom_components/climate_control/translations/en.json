@@ -121,6 +121,22 @@
       }
     }
   },
+  "device": {
+    "house": {
+      "name": "House"
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "away": {
+        "name": "Away",
+        "state": {
+          "on": "Yes",
+          "off": "No"
+        }
+      }
+    }
+  },
   "selector": {
     "override_expiry_policy": {
       "options": {

@@ -34,12 +34,14 @@ from homeassistant.helpers.event import (
 from homeassistant.util import dt as dt_util
 
 from .const import (
+    CONF_AWAY_TEMPERATURE,
     CONF_COMFORT_TEMPERATURE,
     CONF_ECO_TEMPERATURE,
     CONF_FROST_TEMPERATURE,
     CONF_SCHEDULE,
     CONF_TRVS,
 )
+from .presence import Presence
 from .schedule_reader import ScheduleReader
 from .target_resolver import (
     Decision,
@@ -60,11 +62,16 @@ class RoomController:
     """
 
     def __init__(
-        self, hass: HomeAssistant, entry: ConfigEntry, subentry: ConfigSubentry
+        self,
+        hass: HomeAssistant,
+        entry: ConfigEntry,
+        subentry: ConfigSubentry,
+        presence: Presence,
     ) -> None:
         """Create the controller for the room `subentry` of the main entry."""
         self._hass = hass
         self._entry = entry
+        self._presence = presence
         self.room_id = subentry.subentry_id
         self.name = subentry.title
         self._trvs: list[str] = list(subentry.data[CONF_TRVS])
@@ -74,6 +81,7 @@ class RoomController:
             Level.ECO: float(subentry.data[CONF_ECO_TEMPERATURE]),
         }
         self._frost_temperature = float(entry.options[CONF_FROST_TEMPERATURE])
+        self._away_temperature = float(entry.options[CONF_AWAY_TEMPERATURE])
         self._room_mode = RoomMode.AUTO
         self._override_temperature: float | None = None
         self._mode_expires_at: datetime | None = None
@@ -118,6 +126,9 @@ class RoomController:
         )
         self._unsubscribers.append(
             async_track_state_change_event(self._hass, self._trvs, self._trv_changed)
+        )
+        self._unsubscribers.append(
+            self._presence.async_add_listener(self._async_request_evaluation)
         )
         await self._async_evaluate()
 
@@ -190,9 +201,11 @@ class RoomController:
                     schedule=schedule,
                     level_temperatures=self._level_temperatures,
                     frost_temperature=self._frost_temperature,
+                    away_temperature=self._away_temperature,
                     room_mode=self._room_mode,
                     override_temperature=self._override_temperature,
                     mode_expires_at=self._mode_expires_at,
+                    away=self._presence.away,
                 )
             )
             if decision.room_mode is RoomMode.AUTO:
