@@ -14,11 +14,9 @@ from homeassistant.helpers.event import async_track_point_in_utc_time
 from homeassistant.util import dt as dt_util
 
 from . import ClimateControlConfigEntry
-from .const import DOMAIN
+from .const import ATTR_REASON_CODE, DOMAIN
 from .reason_text import async_load_reason_texts, minutes_since, reason_text
 from .room_controller import RoomController
-
-ATTR_REASON_CODE = "reason_code"
 
 
 async def async_setup_entry(

@@ -15,7 +15,13 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import ClimateControlConfigEntry
-from .const import DOMAIN, TEMPERATURE_STEP, TRV_MAX_TEMPERATURE, TRV_MIN_TEMPERATURE
+from .const import (
+    DOMAIN,
+    TEMPERATURE_STEP,
+    TRV_MAX_TEMPERATURE,
+    TRV_MIN_TEMPERATURE,
+    room_entity_unique_id,
+)
 from .room_controller import RoomController
 from .target_resolver import RoomMode
 
@@ -46,7 +52,7 @@ class RoomClimate(ClimateEntity):
     def __init__(self, controller: RoomController) -> None:
         """Represent the room of `controller`."""
         self._controller = controller
-        self._attr_unique_id = f"{controller.room_id}_climate"
+        self._attr_unique_id = room_entity_unique_id(controller.room_id)
         self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, controller.room_id)})
 
     async def async_added_to_hass(self) -> None:

@@ -24,6 +24,7 @@ _TEXTS = f"component.{DOMAIN}.entity.sensor.reason.state"
 _TIME_FORMAT = "%H:%M"
 _DATE_TIME_FORMATS = {"de": "%d.%m. %H:%M"}
 _DEFAULT_DATE_TIME_FORMAT = "%Y-%m-%d %H:%M"
+_DECIMAL_COMMA_LANGUAGES = {"de"}
 
 
 async def async_load_reason_texts(hass: HomeAssistant) -> None:
@@ -53,6 +54,21 @@ def reason_text(
     if template is None:
         return code
     return template.format(**placeholders)
+
+
+@callback
+def target_changed_text(
+    hass: HomeAssistant,
+    temperature: float,
+    code: str,
+    params: Mapping[str, Any],
+    now: datetime,
+) -> str:
+    """Return the logbook text for a new target, e.g. `21,5 °C (Komfort bis 09:00)`."""
+    number = f"{temperature:g}"
+    if hass.config.language in _DECIMAL_COMMA_LANGUAGES:
+        number = number.replace(".", ",")
+    return f"{number} °C ({reason_text(hass, code, params, now)})"
 
 
 def minutes_since(since: datetime, now: datetime) -> int:

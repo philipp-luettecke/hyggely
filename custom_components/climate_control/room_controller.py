@@ -16,6 +16,7 @@ from homeassistant.components.climate import (
 from homeassistant.config_entries import ConfigEntry, ConfigSubentry
 from homeassistant.const import (
     ATTR_ENTITY_ID,
+    ATTR_NAME,
     ATTR_TEMPERATURE,
     STATE_UNAVAILABLE,
     STATE_UNKNOWN,
@@ -27,6 +28,7 @@ from homeassistant.core import (
     HomeAssistant,
     callback,
 )
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.event import (
     async_track_point_in_utc_time,
     async_track_state_change_event,
@@ -34,11 +36,19 @@ from homeassistant.helpers.event import (
 from homeassistant.util import dt as dt_util
 
 from .const import (
+    ATTR_DECIDED_AT,
+    ATTR_REASON_CODE,
+    ATTR_REASON_PARAMS,
+    ATTR_TARGET_TEMPERATURE,
     CONF_COMFORT_TEMPERATURE,
     CONF_ECO_TEMPERATURE,
     CONF_FROST_TEMPERATURE,
     CONF_SCHEDULE,
     CONF_TRVS,
+    DATA_TARGETS_BEFORE_RELOAD,
+    DOMAIN,
+    EVENT_TARGET_CHANGED,
+    room_entity_unique_id,
 )
 from .schedule_reader import ScheduleReader
 from .target_resolver import (
@@ -79,6 +89,9 @@ class RoomController:
         self._override_temperature: float | None = None
         self._mode_expires_at: datetime | None = None
         self._decision: Decision | None = None
+        self._target_before_reload = hass.data.get(DATA_TARGETS_BEFORE_RELOAD, {}).pop(
+            self.room_id, None
+        )
         self._listeners: list[Callable[[], None]] = []
         self._unsubscribers: list[CALLBACK_TYPE] = []
         self._cancel_reevaluation: CALLBACK_TYPE | None = None
@@ -152,10 +165,14 @@ class RoomController:
 
     @callback
     def async_stop(self) -> None:
-        """Unsubscribe all inputs and timers."""
+        """Unsubscribe all inputs and timers; a reload compares against the target."""
         while self._unsubscribers:
             self._unsubscribers.pop()()
         self._cancel_pending_reevaluation()
+        if self.target_temperature is not None:
+            self._hass.data.setdefault(DATA_TARGETS_BEFORE_RELOAD, {})[self.room_id] = (
+                self.target_temperature
+            )
 
     @callback
     def _async_request_evaluation(self) -> None:
@@ -203,6 +220,13 @@ class RoomController:
             )
             if decision.room_mode is RoomMode.AUTO:
                 self._set_room_mode(RoomMode.AUTO, None)
+            previous_target = (
+                self._decision.target_temperature
+                if self._decision
+                else self._target_before_reload
+            )
+            if previous_target not in (None, decision.target_temperature):
+                self._announce_target_change(decision, now)
             self._decision = decision
             self._notify_listeners()
             if decision.reevaluate_at is not None and decision.reevaluate_at > now:
@@ -211,6 +235,27 @@ class RoomController:
                 )
             for trv in self._trvs:
                 await self._async_command_if_deviating(trv, decision)
+
+    @callback
+    def _announce_target_change(self, decision: Decision, now: datetime) -> None:
+        """Fire the event the logbook describes as a target change with reason."""
+        entity_id = er.async_get(self._hass).async_get_entity_id(
+            CLIMATE_DOMAIN, DOMAIN, room_entity_unique_id(self.room_id)
+        )
+        self._hass.bus.async_fire(
+            EVENT_TARGET_CHANGED,
+            {
+                ATTR_ENTITY_ID: entity_id,
+                ATTR_NAME: self.name,
+                ATTR_TARGET_TEMPERATURE: decision.target_temperature,
+                ATTR_REASON_CODE: decision.reason.code.value,
+                ATTR_REASON_PARAMS: {
+                    key: value.isoformat() if isinstance(value, datetime) else value
+                    for key, value in decision.reason.params.items()
+                },
+                ATTR_DECIDED_AT: now.isoformat(),
+            },
+        )
 
     async def _async_command_if_deviating(self, trv: str, decision: Decision) -> None:
         state = self._hass.states.get(trv)
