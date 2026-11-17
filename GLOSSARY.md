@@ -16,6 +16,8 @@ Code, tests and docs use the **Term**. The UI shows the **German label**.
 | Override | Manuelle Übersteuerung | A setpoint chosen by a person (knob, Siri, Google, HA app, panel). Puts the room into `heat` until it expires. |
 | External change | Externe Änderung | A TRV state change not caused by this integration, e.g. a knob turn. Detected, then turned into an override. |
 | Echo | Echo | The immediate TRV state update (< 0.2 s) that reflects a command this integration sent. tado sends no later echoes. Must not become an override. |
+| Unreachable | Nicht erreichbar | A TRV whose `climate` entity or the temperature sensor of its device is `unavailable`. On a bridge outage the `climate` entity only freezes (ticket 01). Gets no commands. |
+| Offline | Offline | A TRV unreachable for longer than 30 min. Shown under repairs. |
 | Override expiry | Rückfall | When a room returns to `auto`. Policy per room: `next_block`, `duration`, or `earliest` (default, 3 h). `off` always returns at the next block boundary. |
 | House mode | Hausbetriebsart | Global mode: `auto`, `vacation` (with end time), `off`. |
 | Away | Abwesend | Derived state: all configured persons not home for the presence delay. Not a house mode. |

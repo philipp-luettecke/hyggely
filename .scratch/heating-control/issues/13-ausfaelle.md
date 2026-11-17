@@ -26,3 +26,19 @@ Verhalten:
 - [ ] Nach 30 min Nichterreichbarkeit gibt es genau einen Reparaturhinweis pro TRV, der bei Rückkehr verschwindet
 - [ ] Die simulierten TRVs bilden das gemessene Ausfallverhalten nach (Einfrieren, Sensor `unavailable`, verzögerte Rückkehr, kurzzeitig `None`)
 - [ ] Szenario-Tests decken Ausfall, Rückkehr, ungültigen Modus, gestaffelten Start und Reparaturhinweis ab
+
+## Comments
+
+**Module:**
+- `trv_reachability.py` (`TrvReachability`, einer pro Raum): findet beim Start des Raums den Temperatursensor über das Gerät des TRV (Entity-Registry, Domäne `sensor`, Geräteklasse `temperature`). Ohne Sensor zählt nur die `climate`-Entität. Ein TRV „nimmt Befehle an“, wenn es erreichbar ist und `heat` oder `off` meldet. Konnte es das zwischendurch nicht (nicht erreichbar, ungültiger Modus, fehlender Zustand), meldet das Modul es zurück, sobald es wieder Befehle annimmt.
+- `command_pacer.py` (`CommandPacer`, einer pro Haupteintrag): führt Nachhol-Befehle aller Räume mit **2 s Abstand** aus, der erste sofort. Nachhol-Befehle sind (a) die ersten Befehle beim Start, solange Home Assistant noch nicht `running` ist, und (b) das erneute Senden an zurückgekehrte TRVs. Bei 20 TRVs ist das letzte nach ca. 40 s versorgt. Reaktionen auf Entscheidungen (Schaltpunkt, Bedienung) gehen weiter sofort raus. Beim Neuladen des Eintrags im laufenden Betrieb wird nicht gestaffelt, damit Optionsänderungen sofort wirken.
+- `repair_issues.py`: hält pro Offline-TRV einen Reparaturhinweis (`trv_offline_<entity_id>`, Warnung, nicht reparierbar, nicht persistent) und löscht ihn bei Rückkehr oder beim Entladen des Raums.
+- `RoomController`: sendet nur an TRVs, die Befehle annehmen. Ein zurückgekehrtes TRV erhält den aktuellen Sollzustand **unbedingt erneut**, auch wenn sein eingefrorener Zustand passt, weil Befehle aus der unbemerkten ersten Minute des Ausfalls verloren gehen (Szenario-Test).
+
+**Für Ticket 14:** Die 30-min-Bedingung ist von außen beobachtbar: `RoomController.offline_trvs` (Menge der Entity-IDs) plus `async_add_listener`, der bei jeder Änderung aufgerufen wird. Der Notifier kann sich genauso anhängen wie `repair_issues.async_track_offline_trvs`. Seit wann ein TRV nicht erreichbar ist, kommt aus `last_changed` der `unavailable`-Zustände. Deshalb übersteht die Bedingung ein Neuladen des Eintrags, und nach einem Neustart zählt die Zeit ab dem Neustart.
+
+**Für Ticket 08/09:** Eingefrorene Werte und der Modus `None` erzeugen keine Befehle. Eine Übersteuerungserkennung muss Zustandsänderungen von TRVs ignorieren, die gerade keine Befehle annehmen (`TrvReachability.takes_commands`). Die Ist-Temperatur des Raums zählt eingefrorene Werte noch mit. Das Ausschließen nicht erreichbarer TRVs vom Mittelwert gehört zu Ticket 09.
+
+**Simulierte TRVs:** Jedes TRV hat jetzt `sensor.<id>_current_temperature` am selben Gerät (abschaltbar mit `temperature_sensor=False`). Home Assistant fragt jede volle Minute ab (`SimulatedTrv._poll`). Ticket 08 kann dort die Drehungen am Knopf zustellen. `unplug_bridge()` friert ein, Befehle gehen verloren, und der Sensor ist ab der zweiten Abfrage `unavailable`. `plug_in_bridge()` bringt den Sensor zur zweiten Abfrage zurück, zusammen mit dem Modus `None` (Zustand `unknown`). Frische Werte kommen zur vierten Abfrage, wie in Ticket 01 gemessen. Außerdem gibt es `report_invalid_mode()` und `set_available()`.
+
+**Annahme:** Ein ungültiger Modus ohne Ausfall wird genauso behandelt wie eine Rückkehr: keine Befehle während `unknown`, danach einmal der aktuelle Sollzustand.
