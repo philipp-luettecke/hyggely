@@ -38,3 +38,5 @@ Empfehlung: B. Die Änderung bleibt auf `schedule_reader.py` begrenzt, kein Test
 **Raum-Daten:** Neu sind `night_temperature` (Standard 17 °C) und `lead_time` (Dauer wie `away_delay`, Standard 0 min). Räume ohne diese Felder bekommen die Standardwerte. Bitte die Standardwerte bei Bedarf anpassen.
 
 **Tests:** `tests/test_levels_and_lead_time.py`. `scenario.block()` nimmt optional eine Stufe, `living_room()` beliebige Blöcke pro Wochentag und `lead_minutes`, `scenario.local()` liefert Zeitpunkte in Ortszeit.
+
+**Zwischenstand:** Merge-Commit `43c2490` auf `feat/heating-control` (Variante A, 54 Tests grün), damit die parallelen Tickets auf dem neuen Schedule Reader aufbauen. Das Ticket bleibt `needs-info`, bis die Frage zur Vorlaufzeit bei angrenzenden kälteren Blöcken entschieden ist.
