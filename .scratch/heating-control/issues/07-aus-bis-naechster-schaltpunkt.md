@@ -6,7 +6,7 @@ Spec: `.scratch/heating-control/spec.md`
 
 **Blocked by:** 06
 
-**Status:** needs-info
+**Status:** done
 
 - [ ] `set_hvac_mode(off)` setzt den Raum auf Aus und das TRV auf `off`
 - [ ] Am nächsten Schaltpunkt wechselt der Raum zu Auto und das TRV erhält die Zeitplan-Stufe
@@ -28,3 +28,7 @@ Spec: `.scratch/heating-control/spec.md`
 **Frage (needs-info): Heizen ohne Temperatur aus Aus.** Die Spec sagt wörtlich: „`set_hvac_mode(heat)` ohne Temperatur übersteuert mit dem aktuellen Sollwert.“ Bei einem ausgeschalteten Raum ist der aktuelle Sollwert der Frostschutz (7 °C). Umgesetzt ist deshalb abweichend die Temperatur, die Auto gerade hätte (siehe Entscheidung oben). Soll das so bleiben (Empfehlung), oder gilt der Wortlaut der Spec? Gleiches gilt sinngemäß bei offenem Fenster (Ticket 10).
 
 **Zwischenstand:** Merge-Commit `d4c735b` auf `feat/heating-control` (106 Tests grün). Alle übrigen Kriterien sind umgesetzt; das Ticket bleibt `needs-info`, bis die Frage entschieden ist.
+
+**Entschieden (Nutzer, 18.11.2026):** Empfehlung übernommen. Heizen ohne Temperatur aus Frostschutz (Aus, Fenster offen, Haus aus) übersteuert mit dem Sollwert, den der Raum ohne diesen Grund hätte. Spec entsprechend angepasst; kein Code-Änderungsbedarf.
+
+**Abgeschlossen:** Merge-Commit `d4c735b` auf `feat/heating-control`. Ergebnis: Aus gilt bis zum nächsten Schaltpunkt, übersteht Neustarts, Heizen aus Aus nutzt die Auto-Temperatur.

@@ -43,3 +43,5 @@ Empfehlung: Option 2, weil sie Klartext und ruhiges Logbuch verbindet. Bitte ent
 **Tests:** `tests/test_window_open.py` (Verzögerung, eigene Fenster-Verzögerung, kurzes Lüften, Wiederherstellung von Zeitplan-Stufe und Übersteuerung samt Rückfallzeitpunkt, Rückfall während offenem Fenster, Fenster über Aus, mehrere Kontakte, nicht erreichbare und unbekannte Kontakte, Grund mit minütlich steigender Dauer, Temperatur und Heizen bei offenem Fenster, Neuladen, Kontakte im Optionsdialog). Hilfe `WindowContact` in `tests/scenario.py`.
 
 **Zwischenstand:** Merge-Commit `3ae6257` auf `feat/heating-control` (121 Tests grün). Status `needs-info` wegen der Logbuch-Frage oben. Noch offen: Szenario „Drehung am Knopf bei offenem Fenster“ (kommt mit Ticket 08) und „Fenster schlägt Haus aus/Urlaub“ (kommt mit Ticket 12).
+
+**Entschieden (Nutzer, 18.11.2026):** Option 2. Der Grund zeigt die Uhrzeit des Öffnens („Fenster offen seit 14:03“) statt einer minütlich steigenden Dauer. Spec und Glossar angepasst.

@@ -21,7 +21,8 @@ Code, tests and docs use the **Term**. The UI shows the **German label**.
 | Override expiry | Rückfall | When a room returns to `auto`. Policy per room: `next_block`, `duration`, or `earliest` (default, 3 h). `off` always returns at the next block boundary. |
 | House mode | Hausbetriebsart | Global mode: `auto`, `vacation` (with end time), `off`. |
 | Away | Abwesend | Derived state: all configured persons not home for the presence delay. Not a house mode. |
+| Presence delay | Abwesenheitsverzögerung | Global duration all configured persons must be not home before Away applies (default 30 min). |
 | Window open | Fenster offen | Any window contact of a room open for longer than the window delay. |
-| Reason | Grund | Human-readable explanation of a room's current target, e.g. "Fenster offen seit 4 min". |
+| Reason | Grund | Human-readable explanation of a room's current target, e.g. "Fenster offen seit 14:03". |
 | Target resolver | — | Pure decision logic: given a room's inputs, returns target, room mode to send and reason. |
 | Heating panel | Heizung (Seitenleiste) | Sidebar panel of this integration for overview, schedules, levels and house mode. Admin-only. |

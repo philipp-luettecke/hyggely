@@ -40,3 +40,5 @@ Empfehlung: B. Die Änderung bleibt auf `schedule_reader.py` begrenzt, kein Test
 **Tests:** `tests/test_levels_and_lead_time.py`. `scenario.block()` nimmt optional eine Stufe, `living_room()` beliebige Blöcke pro Wochentag und `lead_minutes`, `scenario.local()` liefert Zeitpunkte in Ortszeit.
 
 **Zwischenstand:** Merge-Commit `43c2490` auf `feat/heating-control` (Variante A, 54 Tests grün), damit die parallelen Tickets auf dem neuen Schedule Reader aufbauen. Das Ticket bleibt `needs-info`, bis die Frage zur Vorlaufzeit bei angrenzenden kälteren Blöcken entschieden ist.
+
+**Entschieden (Nutzer, 18.11.2026):** Variante B. Die Vorlaufzeit gilt nur, wenn die Stufe des neuen Blocks im Raum wärmer ist als die bisherige; früher abgesenkt wird nie. Spec angepasst.

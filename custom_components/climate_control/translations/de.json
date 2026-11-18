@@ -6,7 +6,7 @@
         "description": "Globale Einstellungen, die für alle Räume gelten. Du kannst sie später in den Optionen ändern.",
         "data": {
           "persons": "Personen",
-          "presence_delay": "Abwesend-Verzögerung",
+          "presence_delay": "Abwesenheitsverzögerung",
           "notify_targets": "Benachrichtigungsempfänger",
           "quiet_start": "Beginn der Ruhezeit",
           "quiet_end": "Ende der Ruhezeit",
@@ -43,7 +43,7 @@
         "description": "Globale Einstellungen, die für alle Räume gelten.",
         "data": {
           "persons": "Personen",
-          "presence_delay": "Abwesend-Verzögerung",
+          "presence_delay": "Abwesenheitsverzögerung",
           "notify_targets": "Benachrichtigungsempfänger",
           "quiet_start": "Beginn der Ruhezeit",
           "quiet_end": "Ende der Ruhezeit",

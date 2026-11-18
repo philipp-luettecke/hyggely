@@ -85,7 +85,7 @@ Fenster offen, Abwesenheit und Urlaub greifen automatisch. Benachrichtigungen gi
 
 ### Nachvollziehbarkeit
 
-42. Als Bewohnerin möchte ich für jeden Raum in Klartext sehen, **warum** er gerade so warm oder kalt ist (z. B. „Fenster offen seit 4 min“, „Heizen bis 14:00 (manuell)“, „Komfort bis 22:00“), damit ich das System verstehe.
+42. Als Bewohnerin möchte ich für jeden Raum in Klartext sehen, **warum** er gerade so warm oder kalt ist (z. B. „Fenster offen seit 14:03“, „Heizen bis 14:00 (manuell)“, „Komfort bis 22:00“), damit ich das System verstehe.
 43. Als Admin möchte ich die Begründung als eigene Sensor-Entität, damit ich sie auf Dashboards und in Automationen nutzen kann.
 44. Als Admin möchte ich im Logbuch sehen, wann und warum ein Raum seinen Sollwert geändert hat, damit ich Probleme nachvollziehen kann.
 45. Als Admin möchte ich in der Panel-Übersicht pro Raum Ist-Temperatur, Solltemperatur, Modus und Grund sehen, damit ich das ganze Haus auf einen Blick erfasse.
@@ -130,7 +130,7 @@ Fenster offen, Abwesenheit und Urlaub greifen automatisch. Benachrichtigungen gi
 - Code, Glossar und ADRs sind auf Englisch, die Oberfläche auf Deutsch und Englisch (Übersetzungsdateien). Spezifikation und Tickets sind auf Deutsch.
 - Konfiguration ausschließlich über Config Flow und Options Flow. Ein **Haupteintrag** enthält die globalen Einstellungen. Jeder **Raum** ist ein Config-Subentry des Haupteintrags.
 - Globale Einstellungen:
-  - Personen für die Anwesenheit und Abwesend-Verzögerung (Standard 30 min)
+  - Personen für die Anwesenheit und Abwesenheitsverzögerung (Standard 30 min)
   - Benachrichtigungsempfänger und Ruhezeit (Standard 22–7 Uhr)
   - Temperaturen für Abwesend, Urlaub und Frostschutz
   - Standard-Rückfallregel (Standard `earliest`, 3 h)
@@ -154,7 +154,7 @@ Fenster offen, Abwesenheit und Urlaub greifen automatisch. Benachrichtigungen gi
   - `set_temperature` erzeugt bzw. aktualisiert eine Übersteuerung und setzt den Modus auf `heat`.
   - `set_hvac_mode(auto)` beendet Übersteuerung oder Aus.
   - `set_hvac_mode(off)` gilt bis zum nächsten Schaltpunkt.
-  - `set_hvac_mode(heat)` ohne Temperatur übersteuert mit dem aktuellen Sollwert.
+  - `set_hvac_mode(heat)` ohne Temperatur übersteuert mit dem aktuellen Sollwert. Gilt gerade Frostschutz wegen Aus, Fenster offen oder Haus aus, übersteuert er stattdessen mit dem Sollwert, den der Raum ohne diesen Grund hätte (Ticket 07).
 - **Grund** (`sensor`) pro Raum: Klartext-Begründung, übersetzt, mit stabilem Grund-Code als Attribut für Automationen.
 - **Hausbetriebsart** (`select`) global: `auto`, `vacation`, `off`.
 - **Urlaubsende** (`datetime`) global. Läuft es ab, wechselt die Hausbetriebsart auf `auto`.
@@ -178,7 +178,7 @@ Fenster offen, Abwesenheit und Urlaub greifen automatisch. Benachrichtigungen gi
 2. **Schedule Reader**
    - Liest den nativen Zeitplan-Helfer: Zustand, Attribute des aktiven Blocks und die Blöcke über die Aktion `schedule.get_schedule`.
    - Die Stufe steht in den Zusatzdaten des Blocks unter einem festen Schlüssel (`level`, Werte `comfort`/`night`). Ein Block ohne Angabe gilt als `comfort`, außerhalb von Blöcken gilt `eco`.
-   - Berechnet die wirksame Stufe unter Berücksichtigung der Vorlaufzeit. Beginnt ein Block innerhalb der Vorlaufzeit, gilt bereits seine Stufe.
+   - Berechnet die wirksame Stufe unter Berücksichtigung der Vorlaufzeit. Beginnt ein Block innerhalb der Vorlaufzeit, gilt bereits seine Stufe, sofern sie im Raum wärmer ist als die bisherige. Vorgeheizt wird also, früher abgesenkt nie (Ticket 04).
    - Berechnet außerdem den nächsten Schaltpunkt.
    - Reagiert auf Änderungen am Helfer, etwa wenn er im Panel bearbeitet wird.
 3. **Room Controller**: einer pro Raum.
