@@ -163,11 +163,6 @@ class RoomController:
         self.room_id = subentry.subentry_id
         self.name = subentry.title
         self._trvs: list[str] = list(subentry.data[CONF_TRVS])
-        self._schedule = ScheduleReader(
-            hass,
-            subentry.data[CONF_SCHEDULE],
-            timedelta(**subentry.data.get(CONF_LEAD_TIME, DEFAULT_LEAD_TIME)),
-        )
         self._level_temperatures = {
             Level.COMFORT: float(subentry.data[CONF_COMFORT_TEMPERATURE]),
             Level.NIGHT: float(
@@ -175,6 +170,12 @@ class RoomController:
             ),
             Level.ECO: float(subentry.data[CONF_ECO_TEMPERATURE]),
         }
+        self._schedule = ScheduleReader(
+            hass,
+            subentry.data[CONF_SCHEDULE],
+            timedelta(**subentry.data.get(CONF_LEAD_TIME, DEFAULT_LEAD_TIME)),
+            self._level_temperatures,
+        )
         self._frost_temperature = float(entry.options[CONF_FROST_TEMPERATURE])
         self._away_temperature = float(entry.options[CONF_AWAY_TEMPERATURE])
         self._vacation_temperature = float(entry.options[CONF_VACATION_TEMPERATURE])

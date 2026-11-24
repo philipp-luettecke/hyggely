@@ -11,7 +11,7 @@ Code, tests and docs use the **Term**. The UI shows the **German label**.
 | Block | Block | One time range in a schedule. Carries a level in its additional data. |
 | Block boundary | Schaltpunkt | Any moment where the effective level from the schedule changes (block start, block end, level change between adjacent blocks). |
 | Level | Stufe | A named temperature tier. Schedule levels: `comfort`, `night`, `eco` (default outside blocks). Global levels: `away`, `vacation`, `frost`. Temperatures of schedule levels are set per room. |
-| Lead time | Vorlaufzeit | Per-room duration by which a block's level is applied before the block starts. |
+| Lead time | Vorlaufzeit | Per-room duration by which a block's level is applied before the block starts, if it is warmer in the room than the level until then. |
 | Room mode | Modus | The room entity's HVAC mode: `auto` (follow schedule), `heat` (override active), `off` (frost protection). |
 | Override | Manuelle Übersteuerung | A setpoint chosen by a person (knob, Siri, Google, HA app, panel). Puts the room into `heat` until it expires. |
 | External change | Externe Änderung | A TRV state change not caused by this integration, e.g. a knob turn. Detected, then turned into an override. |
