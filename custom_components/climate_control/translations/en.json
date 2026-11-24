@@ -189,7 +189,7 @@
           "room_off": "Off",
           "room_off_until": "Off until {until}",
           "window_open": "Window open",
-          "window_open_since": "Window open for {minutes} min",
+          "window_open_since": "Window open since {since}",
           "away": "Away",
           "vacation": "Vacation",
           "vacation_until": "Vacation until {until}",

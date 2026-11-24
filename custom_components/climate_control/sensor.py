@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any
 
 from homeassistant.components.sensor import SensorEntity
@@ -15,7 +15,7 @@ from homeassistant.util import dt as dt_util
 
 from . import ClimateControlConfigEntry
 from .const import ATTR_REASON_CODE, DOMAIN
-from .reason_text import async_load_reason_texts, minutes_since, reason_text
+from .reason_text import async_load_reason_texts, next_local_midnight, reason_text
 from .room_controller import RoomController
 
 
@@ -33,7 +33,8 @@ class RoomReason(SensorEntity):
     """Translates the reason of a room controller's decision into plain text.
 
     The state is the text, the attributes carry the stable reason code and its
-    parameters. A reason counting minutes since a moment refreshes every minute.
+    parameters. A reason since a moment shows its time and refreshes once, at the
+    local midnight after it, to add the date.
     """
 
     _attr_has_entity_name = True
@@ -88,12 +89,11 @@ class RoomReason(SensorEntity):
         self._cancel_pending_refresh()
         reason = self._controller.reason
         since = reason.params.get("since") if reason else None
-        if isinstance(since, datetime):
-            elapsed = minutes_since(since, dt_util.utcnow())
+        if not isinstance(since, datetime):
+            return
+        if (midnight := next_local_midnight(since)) > dt_util.utcnow():
             self._cancel_refresh = async_track_point_in_utc_time(
-                self.hass,
-                self._async_refresh,
-                since + timedelta(minutes=elapsed + 1),
+                self.hass, self._async_refresh, midnight
             )
 
     @callback

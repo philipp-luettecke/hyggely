@@ -2,7 +2,7 @@
 
 The texts live in the translations under `entity.sensor.reason.state`: `<code>`
 without a time, `<code>_until` with the moment the reason ends and
-`<code>_since` with the minutes since it began.
+`<code>_since` with the moment it began.
 """
 
 from __future__ import annotations
@@ -49,7 +49,7 @@ def reason_text(
         placeholders["until"] = _format_moment(until, now, language)
     elif (since := _moment(params.get("since"))) is not None:
         key = f"{code}_since"
-        placeholders["minutes"] = str(minutes_since(since, now))
+        placeholders["since"] = _format_past_moment(since, now, language)
     template = texts.get(f"{_TEXTS}.{key}") or texts.get(f"{_TEXTS}.{code}")
     if template is None:
         return code
@@ -71,9 +71,10 @@ def target_changed_text(
     return f"{number} °C ({reason_text(hass, code, params, now)})"
 
 
-def minutes_since(since: datetime, now: datetime) -> int:
-    """Return the whole minutes elapsed from `since` to `now`."""
-    return (now - since) // timedelta(minutes=1)
+def next_local_midnight(moment: datetime) -> datetime:
+    """Return the local midnight after `moment`; from then on it shows its date."""
+    next_day = dt_util.as_local(moment).date() + timedelta(days=1)
+    return dt_util.start_of_local_day(next_day)
 
 
 def _moment(value: Any) -> datetime | None:
@@ -89,4 +90,16 @@ def _format_moment(moment: datetime, now: datetime, language: str) -> str:
     local = dt_util.as_local(moment)
     if moment - now < timedelta(days=1):
         return local.strftime(_TIME_FORMAT)
+    return _format_with_date(local, language)
+
+
+def _format_past_moment(moment: datetime, now: datetime, language: str) -> str:
+    """Show the time alone on the same local day, otherwise with the date."""
+    local = dt_util.as_local(moment)
+    if now < next_local_midnight(moment):
+        return local.strftime(_TIME_FORMAT)
+    return _format_with_date(local, language)
+
+
+def _format_with_date(local: datetime, language: str) -> str:
     return local.strftime(_DATE_TIME_FORMATS.get(language, _DEFAULT_DATE_TIME_FORMAT))
