@@ -38,3 +38,21 @@ Offene Fragen an den Admin, nicht umgesetzt:
 **Entscheidung Admin (25.11.2026):**
 1. Rundung: Ja (Variante B). Das Raum-Thermostat rundet jede Übersteuerung, etwa per Siri, HomeKit oder Automation über `climate.set_temperature`, kaufmännisch auf ganze Grad (21,5 → 22, 20,5 → 21; nicht Pythons `round`). Vorhandene halbe Werte in den Dialogen bleiben gültig.
 2. Vorlaufzeit im Raum-Dialog: unverändert. Die Grenze 0–3 Stunden in 15-Minuten-Schritten gilt nur im Panel.
+
+**Rundung (Branch `ticket/19-temperature-step`):** `RoomClimate.async_set_temperature` rundet kaufmännisch auf ganze Grad (`floor(x + 0,5)`), also jede Übersteuerung über `climate.set_temperature` (Siri über die HomeKit-Bridge, Google, App, Automationen). Eine Übersteuerung am Drehknopf kommt ohnehin in ganzen Grad an und wird nicht gerundet. Vorhandene halbe Stufenwerte bleiben unverändert und gelten weiter. Tests: `tests/test_temperature_step.py` (21,5 → 22, 20,5 → 21, 21,4 → 21).
+
+**Panel API (`panel_api/levels.py`), nur für Admins:**
+- `climate_control/room/levels` (`room_id`) liefert `comfort_temperature`, `night_temperature`, `eco_temperature` und `lead_time_minutes`.
+- `climate_control/room/set_levels` (`room_id`, beliebige dieser vier Felder) schreibt nur die übergebenen Werte in die Raum-Einstellungen (Subentry). Der Eintrag lädt neu, der Raum wertet sofort aus, und die Werte stehen danach im Optionsdialog des Raums. Temperaturen 5–25 °C; halbe Werte nimmt die API an, wie die Dialoge. Die Vorlaufzeit ist 0–180 min in 15-Minuten-Schritten, sonst `invalid_format`. Nacht oder Eco wärmer als Komfort wird gespeichert.
+- `climate_control/house/temperatures` und `climate_control/house/set_temperatures` (`away_temperature`, `vacation_temperature`, `frost_temperature`, je 5–25 °C) schreiben in die Optionen des Haupteintrags. Alle Räume übernehmen die neuen Werte sofort.
+- Unbekannter Raum: `room_not_found`, nicht geladen: `not_loaded`, Nicht-Admin: `unauthorized`. Das Abonnement der Raumübersicht liefert nach dem Neuladen den neuen Sollwert (per Test abgesichert).
+- Tests: `tests/test_panel_levels.py` (15 Tests).
+
+**Panel:**
+- Raumseite, Abschnitt „Stufen und Vorlaufzeit“ (`rooms/levels-section.ts`): −/+ für Komfort, Nacht und Eco (Punkt in Stufenfarbe) und die Vorlaufzeit („45 min“, „1 h 30 min“). Ein halber Wert wird angezeigt (z. B. „21,5 °C“), −/+ geht auf den nächsten ganzen Grad (21,5 → 22 bzw. 21). Eine Vorlaufzeit außerhalb des Rasters (z. B. 20 min aus dem Dialog) geht auf den nächsten 15-Minuten-Schritt. Die Grenzen sperren den jeweiligen Knopf.
+- Ist Nacht oder Eco wärmer als Komfort, steht darunter „Nacht ist wärmer als Komfort – gewollt?“ bzw. „Eco ist wärmer als Komfort – gewollt?“. Gespeichert wird trotzdem, Nacht gegenüber Eco bekommt keinen Hinweis.
+- Reiter Haus, Abschnitt „Temperaturen für das ganze Haus“ (`house/global-temperatures-section.ts`): Abwesend, Urlaub und Frostschutz mit −/+, darunter der Hinweis, wann Frostschutz gilt.
+- Gespeichert wird 1 Sekunde nach dem letzten Tipp, damit mehrere Tipps nur ein Neuladen auslösen. Beim Verlassen des Panels, beim Wechsel von Raum oder Reiter und wenn die App in den Hintergrund geht, wird sofort gespeichert. Ein Fehler erscheint im Abschnitt, danach lädt er die gespeicherten Werte neu.
+- Gemeinsame Bausteine in `frontend/src/stepper.ts` (−/+, Rundung, verzögertes Speichern), API-Aufrufe in `frontend/src/api/levels.ts`. Die Werte werden beim Öffnen des Raums bzw. des Reiters geladen; eine Änderung im Optionsdialog erscheint im offenen Panel erst nach erneutem Öffnen.
+
+**Nebenbei:** Nach dem Merge von Ticket 17 meldete `scripts/check` Ruff-Befunde in Dateien von 17 (`panel.py`, `tests/test_panel_api.py`, Docstring von `panel_api/house.py`). Sie sind hier minimal behoben, ohne die Logik zu ändern.
