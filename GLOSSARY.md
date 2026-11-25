@@ -18,7 +18,7 @@ Code, tests and docs use the **Term**. The UI shows the **German label**.
 | Echo | Echo | The immediate TRV state update (< 0.2 s) that reflects a command this integration sent. tado sends no later echoes. Must not become an override. |
 | Unreachable | Nicht erreichbar | A TRV whose `climate` entity or the temperature sensor of its device is `unavailable`. On a bridge outage the `climate` entity only freezes (ticket 01). Gets no commands. |
 | Offline | Offline | A TRV unreachable for longer than 30 min. Shown under repairs. |
-| Override expiry | Rückfall | When a room returns to `auto`. Policy per room: `next_block`, `duration`, or `earliest` (default, 3 h). `off` always returns at the next block boundary. |
+| Override expiry | Rückfall | When a room returns to `auto`. Policy per room: `next_block`, `duration`, or `earliest` (default, 3 h). `off` always returns at the next block boundary. Without a block boundary (no schedule, helper missing or unavailable, schedule without blocks) `off` and the override end after the room's override-expiry duration, also for `next_block`. |
 | House mode | Hausbetriebsart | Global mode: `auto`, `vacation` (with end time), `off`. |
 | Away | Abwesend | Derived state: all configured persons not home for the presence delay. Not a house mode. |
 | Presence delay | Abwesenheitsverzögerung | Global duration all configured persons must be not home before Away applies (default 30 min). |

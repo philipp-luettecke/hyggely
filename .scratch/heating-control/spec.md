@@ -153,7 +153,7 @@ Fenster offen, Abwesenheit und Urlaub greifen automatisch. Benachrichtigungen gi
   - Attribute: Grund, Rückfallzeitpunkt, aktive Stufe.
   - `set_temperature` erzeugt bzw. aktualisiert eine Übersteuerung und setzt den Modus auf `heat`.
   - `set_hvac_mode(auto)` beendet Übersteuerung oder Aus.
-  - `set_hvac_mode(off)` gilt bis zum nächsten Schaltpunkt.
+  - `set_hvac_mode(off)` gilt bis zum nächsten Schaltpunkt, ohne Schaltpunkt für die Rückfall-Dauer des Raums.
   - `set_hvac_mode(heat)` ohne Temperatur übersteuert mit dem aktuellen Sollwert. Gilt gerade Frostschutz wegen Aus, Fenster offen oder Haus aus, übersteuert er stattdessen mit dem Sollwert, den der Raum ohne diesen Grund hätte (Ticket 07).
 - **Grund** (`sensor`) pro Raum: Klartext-Begründung, übersetzt, mit stabilem Grund-Code als Attribut für Automationen. Während der Vorlaufzeit nennt er das Vorheizen („Vorheizen auf Komfort, Beginn 16:30“, Code `preheat`), ohne Zeitplan „Kein Zeitplan – Eco“ (Code `no_schedule`).
 - **Hausbetriebsart** (`select`) global: `auto`, `vacation`, `off`.
@@ -242,7 +242,7 @@ Fenster offen, Abwesenheit und Urlaub greifen automatisch. Benachrichtigungen gi
 - **tado wird rein lokal über HomeKit betrieben**, ohne tado-App und ohne Cloud. Die TRVs bieten nur `off` und `heat`.
 - **Siri läuft über die HomeKit-Bridge von Home Assistant.** Freigegeben werden nur die Raum-Thermostate. Google Home folgt später über die eigene Google-Assistant-Einrichtung ohne Nabu Casa, ebenfalls nur mit den Raum-Thermostaten.
 - **Kein eigener Boost.** Die Übersteuerung deckt diesen Anwendungsfall ab.
-- **Rückfall:** `heat` endet nach Rückfallregel (`next_block`, `duration` oder `earliest`). `off` endet immer am nächsten Schaltpunkt.
+- **Rückfall:** `heat` endet nach Rückfallregel (`next_block`, `duration` oder `earliest`). `off` endet immer am nächsten Schaltpunkt. Ausnahme: Gibt es keinen Schaltpunkt (kein Zeitplan, fehlender oder nicht verfügbarer Helfer, Zeitplan ohne Blöcke), enden `off` und `heat` nach der Rückfall-Dauer des Raums (Standard 3 h), auch bei `next_block`. Der Rückfallzeitpunkt wird beim Wählen festgelegt (Ticket 18).
 - **Mehrere TRVs pro Raum** bekommen immer denselben Sollwert. Als Ist-Temperatur gilt der Mittelwert der verfügbaren TRVs.
 
 ## Testing Decisions
