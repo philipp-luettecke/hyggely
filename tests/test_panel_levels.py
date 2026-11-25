@@ -3,8 +3,8 @@
 from typing import Any
 
 from homeassistant.core import HomeAssistant
-from pytest_homeassistant.typing import MockHAClientWebSocket, WebSocketGenerator
 import pytest
+from pytest_homeassistant.typing import MockHAClientWebSocket, WebSocketGenerator
 
 from tests.scenario import (
     HEAT_21,
@@ -95,7 +95,7 @@ async def test_lead_time_from_the_panel_preheats_at_once(
     schedules: Schedules,
     simulated_trvs: SimulatedTrvs,
 ) -> None:
-    """At 06:15 night 18 °C and 60 min lead time preheat for the night block at 07:00."""
+    """At 06:15 night 18 °C and 60 min lead time preheat for night at 07:00."""
     admin = await hass_ws_client(hass)
     clock.set("2026-11-16 06:15")
     room = await living_room(

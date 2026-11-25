@@ -1,5 +1,7 @@
-"""Panel API, levels (ticket 19): level temperatures and lead time of a room,
-global temperatures for away, vacation and frost protection.
+"""Panel API, levels (ticket 19).
+
+Level temperatures and lead time of a room, global temperatures for away,
+vacation and frost protection.
 """
 
 from __future__ import annotations
@@ -111,7 +113,7 @@ async def _set_room_levels(
     if (room := _room_or_error(hass, connection, msg)) is None:
         return
     entry, subentry = room
-    changes = {
+    changes: dict[str, Any] = {
         key: msg[key]
         for key in (
             CONF_COMFORT_TEMPERATURE,
@@ -160,9 +162,7 @@ async def _set_global_temperatures(
     if (entry := _main_entry_or_error(hass, connection, msg)) is None:
         return
     changes = {key: msg[key] for key in _GLOBAL_TEMPERATURES if key in msg}
-    hass.config_entries.async_update_entry(
-        entry, options={**entry.options, **changes}
-    )
+    hass.config_entries.async_update_entry(entry, options={**entry.options, **changes})
     connection.send_result(msg["id"])
 
 
