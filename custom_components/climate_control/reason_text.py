@@ -1,8 +1,10 @@
 """Human-readable reasons in the language of Home Assistant.
 
 The texts live in the translations under `entity.sensor.reason.state`: `<code>`
-without a time, `<code>_until` with the moment the reason ends and
-`<code>_since` with the moment it began.
+without a time, `<code>_until` with the moment the reason ends,
+`<code>_since` with the moment it began and `<code>_start` with the moment a
+block starts. A `{level}` in a text is the name of a schedule level, taken from
+the text of the reason code sharing its value.
 """
 
 from __future__ import annotations
@@ -50,6 +52,11 @@ def reason_text(
     elif (since := _moment(params.get("since"))) is not None:
         key = f"{code}_since"
         placeholders["since"] = _format_past_moment(since, now, language)
+    elif (start := _moment(params.get("start"))) is not None:
+        key = f"{code}_start"
+        placeholders["start"] = _format_moment(start, now, language)
+    if (level := params.get("level")) is not None:
+        placeholders["level"] = texts.get(f"{_TEXTS}.{level}", str(level))
     template = texts.get(f"{_TEXTS}.{key}") or texts.get(f"{_TEXTS}.{code}")
     if template is None:
         return code

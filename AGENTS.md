@@ -17,9 +17,14 @@ Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/ag
 Run from the root of any worktree on Windows (all Python tooling runs in WSL):
 
 ```powershell
-wsl -d RSLinux-24.04 -- ./scripts/check                          # ruff check, ruff format --check, mypy, all tests
+wsl -d RSLinux-24.04 -- ./scripts/check                          # ruff check, ruff format --check, mypy, heating panel, all tests
 wsl -d RSLinux-24.04 -- ./scripts/check tests/test_main_entry.py # only pytest, any pytest arguments
+wsl -d RSLinux-24.04 -- ./scripts/panel build                    # type check the heating panel and rebuild its module
 ```
+
+- Heating panel: TypeScript with Lit under `frontend/src/`, bundled by esbuild (`frontend/build.mjs`) into `custom_components/climate_control/frontend/heating-panel.js`. The bundle is checked in, because HACS installs straight from the repository. `scripts/check` runs `scripts/panel check`: it type checks and fails if the checked-in bundle differs from a fresh build. After every change under `frontend/` run `scripts/panel build` and commit the bundle. On a merge conflict in the bundle take either side, run `scripts/panel build` and commit the result.
+- `scripts/panel` needs Node.js ≥ 18.19 with npm (WSL: 18.19.1). npm corrupts packages it unpacks onto a Windows drive under WSL, so `scripts/panel` builds in a copy under `~/.cache/climate-control/venvs/<hash of path>/frontend`. The npm registry configured in WSL resolves without the DNS workaround below; don't run npm inside `unshare` (it fails on `chown`). `frontend/package-lock.json` keeps `registry.npmjs.org` URLs for CI; npm swaps in the configured registry. When dependencies change, regenerate the lock file in a Linux directory and replace the registry host of the `resolved` URLs with `https://registry.npmjs.org/`.
+- Sections of the panel live in their own files so tickets can work in parallel: per tab under `frontend/src/<tab>/`, Panel API calls per ticket under `frontend/src/api/`, websocket commands per ticket under `custom_components/climate_control/panel_api/`.
 
 - `scripts/check` needs `uv` in `~/.local/bin` (WSL). It syncs a per-worktree virtualenv under `~/.cache/climate-control/venvs/<hash of path>` and uses the uv cache in `~/.cache/climate-control/uv`, so worktrees can run it concurrently. CI (`.github/workflows/ci.yml`) runs the same script plus hassfest and HACS validation.
 - Tests use `pytest-homeassistant` (the official successor of `pytest-homeassistant-custom-component`), pinned to the Home Assistant version in `pyproject.toml`. Simulated TRVs for scenario tests: `tests/simulated_trv.py` (fixture `simulated_trvs`).

@@ -194,6 +194,8 @@
           "vacation": "Vacation",
           "vacation_until": "Vacation until {until}",
           "house_off": "House off",
+          "preheat": "Preheating to {level}",
+          "preheat_start": "Preheating to {level}, starts {start}",
           "no_schedule": "No schedule – Eco"
         },
         "state_attributes": {
@@ -205,6 +207,12 @@
           },
           "since": {
             "name": "Since"
+          },
+          "level": {
+            "name": "Level"
+          },
+          "start": {
+            "name": "Start"
           }
         }
       }

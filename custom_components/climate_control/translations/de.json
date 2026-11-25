@@ -194,6 +194,8 @@
           "vacation": "Urlaub",
           "vacation_until": "Urlaub bis {until}",
           "house_off": "Haus aus",
+          "preheat": "Vorheizen auf {level}",
+          "preheat_start": "Vorheizen auf {level}, Beginn {start}",
           "no_schedule": "Kein Zeitplan – Eco"
         },
         "state_attributes": {
@@ -205,6 +207,12 @@
           },
           "since": {
             "name": "Seit"
+          },
+          "level": {
+            "name": "Stufe"
+          },
+          "start": {
+            "name": "Beginn"
           }
         }
       }
