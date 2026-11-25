@@ -562,6 +562,24 @@ function returnToAuto(hass, roomId) {
   });
 }
 
+// src/api/levels.ts
+function getRoomLevels(hass, roomId) {
+  return hass.callWS({ type: "climate_control/room/levels", room_id: roomId });
+}
+function setRoomLevels(hass, roomId, changes) {
+  return hass.callWS({
+    type: "climate_control/room/set_levels",
+    room_id: roomId,
+    ...changes
+  });
+}
+function getGlobalTemperatures(hass) {
+  return hass.callWS({ type: "climate_control/house/temperatures" });
+}
+function setGlobalTemperatures(hass, changes) {
+  return hass.callWS({ type: "climate_control/house/set_temperatures", ...changes });
+}
+
 // src/i18n.ts
 function language(hass) {
   return hass?.locale?.language ?? hass?.language ?? "en";
@@ -587,15 +605,118 @@ function formatTemperature(hass, value) {
   return `${number} °C`;
 }
 
-// src/placeholder.ts
-var TEXTS = {
-  de: { later: "Folgt in einer späteren Version." },
-  en: { later: "Coming in a later version." }
-};
-function placeholderSection(hass, title) {
-  return b2`<h2 class="section">${title}</h2>
-    <div class="card pad muted small">${localize(hass, TEXTS).later}</div>`;
+// src/stepper.ts
+var MIN_TEMPERATURE = 5;
+var MAX_TEMPERATURE = 25;
+var LEAD_TIME_STEP_MINUTES = 15;
+var MAX_LEAD_TIME_MINUTES = 180;
+var SAVE_DELAY_MS = 1e3;
+function stepTemperature(value, direction) {
+  const next = direction > 0 ? Math.floor(value) + 1 : Math.ceil(value) - 1;
+  return Math.min(MAX_TEMPERATURE, Math.max(MIN_TEMPERATURE, next));
 }
+function stepLeadTime(minutes, direction) {
+  const steps = minutes / LEAD_TIME_STEP_MINUTES;
+  const next = (direction > 0 ? Math.floor(steps) + 1 : Math.ceil(steps) - 1) * LEAD_TIME_STEP_MINUTES;
+  return Math.min(MAX_LEAD_TIME_MINUTES, Math.max(0, next));
+}
+function stepper(options) {
+  return b2`<div class="row">
+    <span class="row-name">${options.label}</span>
+    <span class="stepper">
+      <button aria-label=${options.less} ?disabled=${!options.canDown} @click=${() => options.onStep(-1)}>−</button>
+      <span class="value">${options.value}</span>
+      <button aria-label=${options.more} ?disabled=${!options.canUp} @click=${() => options.onStep(1)}>+</button>
+    </span>
+  </div>`;
+}
+var stepperStyles = i`
+  .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 0;
+  }
+  .row-name {
+    display: flex;
+    align-items: center;
+  }
+  .stepper {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--cc-divider);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .stepper button {
+    width: 44px;
+    height: 40px;
+    border: 0;
+    background: transparent;
+    color: var(--cc-primary);
+    font: inherit;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .stepper button:disabled {
+    color: var(--cc-muted);
+    opacity: 0.35;
+    cursor: default;
+  }
+  .stepper .value {
+    min-width: 84px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+  .hint {
+    margin: 8px 0 0;
+    color: var(--warning-color, #e65100);
+  }
+  .error {
+    margin: 8px 0 0;
+    color: var(--error-color, #d32f2f);
+  }
+`;
+var DelayedSave = class {
+  constructor(_send) {
+    this._send = _send;
+    this._changes = {};
+    this.flush = () => {
+      window.clearTimeout(this._timer);
+      this._timer = void 0;
+      const changes = this._changes;
+      if (Object.keys(changes).length === 0) {
+        return;
+      }
+      this._changes = {};
+      this._send(changes);
+    };
+    this._flushWhenHidden = () => {
+      if (document.visibilityState === "hidden") {
+        this.flush();
+      }
+    };
+  }
+  get changes() {
+    return this._changes;
+  }
+  change(changes) {
+    this._changes = { ...this._changes, ...changes };
+    window.clearTimeout(this._timer);
+    this._timer = window.setTimeout(this.flush, SAVE_DELAY_MS);
+  }
+  connect() {
+    document.addEventListener("visibilitychange", this._flushWhenHidden);
+    window.addEventListener("pagehide", this.flush);
+  }
+  disconnect() {
+    document.removeEventListener("visibilitychange", this._flushWhenHidden);
+    window.removeEventListener("pagehide", this.flush);
+    this.flush();
+  }
+};
 
 // src/styles.ts
 var sharedStyles = i`
@@ -664,20 +785,129 @@ function defineOnce(name, element) {
 }
 
 // src/house/global-temperatures-section.ts
-var TEXTS2 = {
-  de: { title: "Temperaturen für das ganze Haus" },
-  en: { title: "Temperatures for the whole house" }
+var TEXTS = {
+  de: {
+    title: "Temperaturen für das ganze Haus",
+    away: "Abwesend",
+    vacation: "Urlaub",
+    frost: "Frostschutz",
+    frostNote: "Frostschutz gilt bei offenem Fenster, bei „Aus“ und wenn das Haus aus ist.",
+    less: "{name} weniger",
+    more: "{name} mehr",
+    loading: "Lade Temperaturen …",
+    failed: "Konnte nicht gespeichert werden: {error}",
+    loadFailed: "Temperaturen konnten nicht geladen werden: {error}"
+  },
+  en: {
+    title: "Temperatures for the whole house",
+    away: "Away",
+    vacation: "Vacation",
+    frost: "Frost protection",
+    frostNote: "Frost protection applies with a window open, in “Off” and when the house is off.",
+    less: "{name} lower",
+    more: "{name} higher",
+    loading: "Loading temperatures …",
+    failed: "Could not be saved: {error}",
+    loadFailed: "Temperatures could not be loaded: {error}"
+  }
 };
+var GLOBAL_LEVELS = ["away", "vacation", "frost"];
 var GlobalTemperaturesSection = class extends i4 {
+  constructor() {
+    super(...arguments);
+    this._loading = false;
+    this._save = new DelayedSave((changes) => this._send(changes));
+  }
+  connectedCallback() {
+    super.connectedCallback();
+    this._save.connect();
+  }
+  disconnectedCallback() {
+    this._save.disconnect();
+    super.disconnectedCallback();
+  }
+  willUpdate(changed) {
+    if (changed.has("hass") && !this._temperatures && !this._loading) {
+      this._load();
+    }
+  }
+  _load() {
+    if (!this.hass) {
+      return;
+    }
+    this._loading = true;
+    getGlobalTemperatures(this.hass).then((temperatures) => {
+      this._temperatures = temperatures;
+      this._error = void 0;
+    }).catch((error) => {
+      this._error = format(localize(this.hass, TEXTS).loadFailed, { error: errorMessage(error) });
+    }).finally(() => {
+      this._loading = false;
+    });
+  }
+  _send(changes) {
+    if (!this.hass) {
+      return;
+    }
+    if (this._temperatures) {
+      this._temperatures = { ...this._temperatures, ...changes };
+    }
+    setGlobalTemperatures(this.hass, changes).catch((error) => {
+      this._temperatures = void 0;
+      this._load();
+      this._error = format(localize(this.hass, TEXTS).failed, { error: errorMessage(error) });
+    });
+  }
   render() {
-    return placeholderSection(this.hass, localize(this.hass, TEXTS2).title);
+    const t3 = localize(this.hass, TEXTS);
+    return b2`<h2 class="section">${t3.title}</h2>
+      <div class="card pad">${this._body(t3)}</div>`;
+  }
+  _body(t3) {
+    if (!this._temperatures) {
+      return this._error ? b2`<p class="error" role="alert">${this._error}</p>` : b2`<span class="muted small">${t3.loading}</span>`;
+    }
+    const temperatures = { ...this._temperatures, ...this._save.changes };
+    return b2`
+      ${GLOBAL_LEVELS.map((level) => {
+      const key = `${level}_temperature`;
+      const value = temperatures[key];
+      return stepper({
+        label: t3[level],
+        value: formatTemperature(this.hass, value),
+        less: format(t3.less, { name: t3[level] }),
+        more: format(t3.more, { name: t3[level] }),
+        canDown: value > MIN_TEMPERATURE,
+        canUp: value < MAX_TEMPERATURE,
+        onStep: (direction) => {
+          this._error = void 0;
+          this._save.change({ [key]: stepTemperature(value, direction) });
+          this.requestUpdate();
+        }
+      });
+    })}
+      <p class="muted small">${t3.frostNote}</p>
+      ${this._error ? b2`<p class="error small" role="alert">${this._error}</p>` : A}
+    `;
   }
 };
 GlobalTemperaturesSection.properties = {
-  hass: { attribute: false }
+  hass: { attribute: false },
+  _temperatures: { state: true },
+  _error: { state: true }
 };
-GlobalTemperaturesSection.styles = sharedStyles;
+GlobalTemperaturesSection.styles = [sharedStyles, stepperStyles];
 defineOnce("cc-global-temperatures-section", GlobalTemperaturesSection);
+
+// src/placeholder.ts
+var TEXTS2 = {
+  de: { later: "Folgt in einer späteren Version." },
+  en: { later: "Coming in a later version." }
+};
+function placeholderSection(hass, title) {
+  return b2`<h2 class="section">${title}</h2>
+    <div class="card pad muted small">${localize(hass, TEXTS2).later}</div>`;
+}
 
 // src/house/house-mode-section.ts
 var TEXTS3 = {
@@ -1020,19 +1250,174 @@ defineOnce("cc-overview-tab", OverviewTab);
 
 // src/rooms/levels-section.ts
 var TEXTS5 = {
-  de: { title: "Stufen und Vorlaufzeit" },
-  en: { title: "Levels and lead time" }
+  de: {
+    title: "Stufen und Vorlaufzeit",
+    comfort: "Komfort",
+    night: "Nacht",
+    eco: "Eco",
+    leadTime: "Vorlaufzeit",
+    leadTimeNote: "So lange vor Beginn eines Blocks gilt bereits seine Stufe, wenn sie wärmer ist.",
+    warmer: "{level} ist wärmer als Komfort – gewollt?",
+    less: "{name} weniger",
+    more: "{name} mehr",
+    loading: "Lade Stufen …",
+    failed: "Konnte nicht gespeichert werden: {error}",
+    loadFailed: "Stufen konnten nicht geladen werden: {error}"
+  },
+  en: {
+    title: "Levels and lead time",
+    comfort: "Comfort",
+    night: "Night",
+    eco: "Eco",
+    leadTime: "Lead time",
+    leadTimeNote: "A warmer level of a block already applies this long before the block starts.",
+    warmer: "{level} is warmer than comfort – intended?",
+    less: "{name} lower",
+    more: "{name} higher",
+    loading: "Loading levels …",
+    failed: "Could not be saved: {error}",
+    loadFailed: "Levels could not be loaded: {error}"
+  }
 };
+var LEVELS = ["comfort", "night", "eco"];
+function formatLeadTime(minutes) {
+  const total = Math.round(minutes);
+  const hours = Math.floor(total / 60);
+  const rest = total % 60;
+  if (hours === 0) {
+    return `${rest} min`;
+  }
+  return rest === 0 ? `${hours} h` : `${hours} h ${rest} min`;
+}
 var RoomLevelsSection = class extends i4 {
+  connectedCallback() {
+    super.connectedCallback();
+    this._save?.connect();
+  }
+  disconnectedCallback() {
+    this._save?.disconnect();
+    super.disconnectedCallback();
+  }
+  willUpdate(changed) {
+    if ((changed.has("room") || changed.has("hass")) && this.room?.room_id !== this._loadedRoomId) {
+      this._load();
+    }
+  }
+  _load() {
+    const hass = this.hass;
+    const roomId = this.room?.room_id;
+    if (!hass || !roomId) {
+      return;
+    }
+    this._save?.disconnect();
+    this._loadedRoomId = roomId;
+    this._levels = void 0;
+    this._error = void 0;
+    this._save = new DelayedSave((changes) => this._send(hass, roomId, changes));
+    this._save.connect();
+    getRoomLevels(hass, roomId).then((levels) => {
+      if (this._loadedRoomId === roomId) {
+        this._levels = levels;
+      }
+    }).catch((error) => {
+      if (this._loadedRoomId === roomId) {
+        this._error = format(localize(this.hass, TEXTS5).loadFailed, { error: errorMessage(error) });
+      }
+    });
+  }
+  _send(hass, roomId, changes) {
+    if (this._loadedRoomId === roomId && this._levels) {
+      this._levels = { ...this._levels, ...changes };
+    }
+    setRoomLevels(hass, roomId, changes).catch((error) => {
+      if (this._loadedRoomId === roomId) {
+        this._loadedRoomId = void 0;
+        this._load();
+        this._error = format(localize(this.hass, TEXTS5).failed, { error: errorMessage(error) });
+      }
+    });
+  }
   render() {
-    return placeholderSection(this.hass, localize(this.hass, TEXTS5).title);
+    const t3 = localize(this.hass, TEXTS5);
+    return b2`<h2 class="section">${t3.title}</h2>
+      <div class="card pad">${this._body(t3)}</div>`;
+  }
+  _body(t3) {
+    if (!this._levels) {
+      return this._error ? b2`<p class="error" role="alert">${this._error}</p>` : b2`<span class="muted small">${t3.loading}</span>`;
+    }
+    const levels = { ...this._levels, ...this._save?.changes };
+    const warmer = ["night", "eco"].filter(
+      (level) => levels[`${level}_temperature`] > levels.comfort_temperature
+    );
+    return b2`
+      ${LEVELS.map((level) => this._temperatureRow(t3, levels, level))}
+      ${warmer.map(
+      (level) => b2`<p class="hint small" role="status">${format(t3.warmer, { level: t3[level] })}</p>`
+    )}
+      ${stepper({
+      label: t3.leadTime,
+      value: formatLeadTime(levels.lead_time_minutes),
+      less: format(t3.less, { name: t3.leadTime }),
+      more: format(t3.more, { name: t3.leadTime }),
+      canDown: levels.lead_time_minutes > 0,
+      canUp: levels.lead_time_minutes < MAX_LEAD_TIME_MINUTES,
+      onStep: (direction) => this._change({ lead_time_minutes: stepLeadTime(levels.lead_time_minutes, direction) })
+    })}
+      <p class="muted small note">${t3.leadTimeNote}</p>
+      ${this._error ? b2`<p class="error small" role="alert">${this._error}</p>` : A}
+    `;
+  }
+  _temperatureRow(t3, levels, level) {
+    const key = `${level}_temperature`;
+    const value = levels[key];
+    return stepper({
+      label: b2`<i class="dot dot-${level}"></i>${t3[level]}`,
+      value: formatTemperature(this.hass, value),
+      less: format(t3.less, { name: t3[level] }),
+      more: format(t3.more, { name: t3[level] }),
+      canDown: value > MIN_TEMPERATURE,
+      canUp: value < MAX_TEMPERATURE,
+      onStep: (direction) => this._change({ [key]: stepTemperature(value, direction) })
+    });
+  }
+  _change(changes) {
+    this._error = void 0;
+    this._save?.change(changes);
+    this.requestUpdate();
   }
 };
 RoomLevelsSection.properties = {
   hass: { attribute: false },
-  room: { attribute: false }
+  room: { attribute: false },
+  _levels: { state: true },
+  _error: { state: true }
 };
-RoomLevelsSection.styles = sharedStyles;
+RoomLevelsSection.styles = [
+  sharedStyles,
+  stepperStyles,
+  i`
+      .dot {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        margin-right: 8px;
+      }
+      .dot-comfort {
+        background: #ffb300;
+      }
+      .dot-night {
+        background: var(--cc-night);
+      }
+      .dot-eco {
+        background: #8bc34a;
+      }
+      .note {
+        margin: 4px 0 0;
+      }
+    `
+];
 defineOnce("cc-room-levels-section", RoomLevelsSection);
 
 // src/rooms/schedule-section.ts
