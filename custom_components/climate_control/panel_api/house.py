@@ -1,5 +1,6 @@
-"""Panel API, house (ticket 20): house mode, vacation with its end, away with
-the configured persons.
+"""Panel API, house (ticket 20).
+
+House mode, vacation with its end, away with the configured persons.
 """
 
 from __future__ import annotations

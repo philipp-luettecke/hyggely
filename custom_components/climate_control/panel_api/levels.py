@@ -1,5 +1,7 @@
-"""Panel API, levels (ticket 19): level temperatures and lead time of a room,
-global temperatures for away, vacation and frost protection.
+"""Panel API, levels (ticket 19).
+
+Level temperatures and lead time of a room, global temperatures for away,
+vacation and frost protection.
 """
 
 from __future__ import annotations

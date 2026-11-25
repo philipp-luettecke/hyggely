@@ -60,7 +60,7 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 
 async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:
-    """Offer the panel API and the services; they answer once the main entry is loaded."""
+    """Offer the panel API and the services; they act once the main entry is loaded."""
     async_register_commands(hass)
     async_setup_services(hass)
     return True

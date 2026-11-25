@@ -3,8 +3,8 @@
 from typing import Any
 
 from homeassistant.core import HomeAssistant
-from pytest_homeassistant.typing import MockHAClientWebSocket, WebSocketGenerator
 import pytest
+from pytest_homeassistant.typing import MockHAClientWebSocket, WebSocketGenerator
 
 from tests.scenario import (
     Clock,
@@ -124,7 +124,7 @@ async def test_house_keeps_reporting_after_the_global_settings_change(
     simulated_trvs: SimulatedTrvs,
     persons: Persons,
 ) -> None:
-    """Adding Ben in the options reloads the entry; the panel lists him and follows on."""
+    """Adding Ben in the options reloads the entry; the panel lists him and goes on."""
     admin = await hass_ws_client(hass)
     clock.set("2026-11-16 08:00")
     entity_ids = await persons.add(anna="home", ben="home")
