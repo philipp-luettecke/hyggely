@@ -10,6 +10,9 @@ ATTR_REASON_CODE: Final = "reason_code"
 ATTR_REASON_PARAMS: Final = "reason_params"
 ATTR_DECIDED_AT: Final = "decided_at"
 
+SIGNAL_ROOMS_CHANGED: Final = f"{DOMAIN}_rooms_changed"
+"""Dispatcher signal: a room changed, or the set of rooms did."""
+
 
 def room_entity_unique_id(room_id: str) -> str:
     """Return the unique id of the room entity of a room."""

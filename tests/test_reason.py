@@ -135,6 +135,65 @@ async def test_reason_follows_the_room_across_block_boundaries(
     assert room.reason(hass).attributes["reason_code"] == "comfort"
 
 
+async def test_reason_names_preheating_during_the_lead_time(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+) -> None:
+    """Within the 30 min lead time the reason names the level and the block start."""
+    await _speak(hass, "de")
+    clock.set("2026-11-16 06:00")
+    room = await living_room(hass, schedules, simulated_trvs, lead_minutes=30)
+
+    await clock.advance_to("2026-11-16 06:30:00")
+
+    reason = room.reason(hass)
+    assert reason.state == "Vorheizen auf Komfort, Beginn 07:00"
+    assert reason.attributes["reason_code"] == "preheat"
+    assert reason.attributes["level"] == "comfort"
+    assert reason.attributes["start"] == _local("2026-11-16 07:00")
+
+
+async def test_reason_returns_to_comfort_until_once_the_block_starts(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+) -> None:
+    """Preheating ends at the block start: from then on comfort until its end."""
+    await _speak(hass, "de")
+    clock.set("2026-11-16 06:40")
+    room = await living_room(hass, schedules, simulated_trvs, lead_minutes=30)
+
+    await clock.advance_to("2026-11-16 07:00:00")
+
+    assert room.reason(hass).state == "Komfort bis 09:00"
+    assert room.reason(hass).attributes["reason_code"] == "comfort"
+
+
+async def test_reason_names_preheating_from_night_to_comfort_in_english(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+) -> None:
+    """Night 00:00-06:30, comfort from 06:30: preheating starts during the night."""
+    await _speak(hass, "en")
+    clock.set("2026-11-16 06:10")
+
+    room = await living_room(
+        hass,
+        schedules,
+        simulated_trvs,
+        lead_minutes=30,
+        night_temperature=18.0,
+        monday=[block("00:00", "06:30", "night"), block("06:30", "09:00")],
+    )
+
+    assert room.reason(hass).state == "Preheating to Comfort, starts 06:30"
+
+
 async def test_reason_is_in_english_when_home_assistant_speaks_english(
     hass: HomeAssistant,
     clock: Clock,
@@ -233,6 +292,7 @@ REASON_CODES = [
     "away",
     "vacation",
     "house_off",
+    "preheat",
 ]
 
 
@@ -249,3 +309,5 @@ async def test_every_reason_code_has_a_text_in_the_language(
     for code in ("comfort", "night", "eco", "override", "room_off", "vacation"):
         assert "{until}" in texts[f"{prefix}.{code}_until"]
     assert "{since}" in texts[f"{prefix}.window_open_since"]
+    assert "{level}" in texts[f"{prefix}.preheat"]
+    assert "{start}" in texts[f"{prefix}.preheat_start"]
