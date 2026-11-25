@@ -16,7 +16,7 @@ from tests.scenario import (
 )
 from tests.simulated_trv import SimulatedTrvs
 
-HEAT_15_5 = ("set_temperature", {"temperature": 15.5, "hvac_mode": "heat"})
+HEAT_15 = ("set_temperature", {"temperature": 15.0, "hvac_mode": "heat"})
 HEAT_16 = ("set_temperature", {"temperature": 16.0, "hvac_mode": "heat"})
 HEAT_23 = ("set_temperature", {"temperature": 23.0, "hvac_mode": "heat"})
 
@@ -223,10 +223,10 @@ async def test_house_empty_for_longer_than_the_presence_delay_is_away_at_once(
     assert away_state(hass, room.entry).state == "on"
     assert room.state(hass).attributes["temperature"] == 16.0
 
-    await change_global_settings(hass, room.entry, away_temperature=15.5)
+    await change_global_settings(hass, room.entry, away_temperature=15.0)
     assert away_state(hass, room.entry).state == "on"
-    assert room.state(hass).attributes["temperature"] == 15.5
-    assert commands(room.trv) == [HEAT_21, HEAT_16, HEAT_15_5]
+    assert room.state(hass).attributes["temperature"] == 15.0
+    assert commands(room.trv) == [HEAT_21, HEAT_16, HEAT_15]
 
 
 async def test_house_without_persons_is_never_away(
