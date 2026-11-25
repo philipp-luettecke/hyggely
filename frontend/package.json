@@ -1,0 +1,20 @@
+{
+  "name": "climate-control-heating-panel",
+  "private": true,
+  "description": "Heating panel of the climate_control integration, served as one JavaScript module.",
+  "type": "module",
+  "engines": {
+    "node": ">=18.19"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "lit": "3.3.1"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.12",
+    "typescript": "5.9.3"
+  }
+}

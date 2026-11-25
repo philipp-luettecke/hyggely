@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# Type check and bundle the heating panel. Runs on Linux (WSL on Windows).
+#
+#   scripts/panel build    type check, then write the module the integration serves
+#   scripts/panel check    type check, then fail if the checked-in module differs
+#                          from a fresh build
+#
+# Under WSL, npm corrupts packages it unpacks onto a Windows drive. So the panel
+# is built in a copy on the Linux filesystem, one per checkout, next to the
+# virtualenv of scripts/check.
+set -euo pipefail
+
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+root="$(pwd -P)"
+module="$root/custom_components/climate_control/frontend/heating-panel.js"
+
+if [[ $# -ne 1 || ! "$1" =~ ^(build|check)$ ]]; then
+    echo "Usage: scripts/panel build|check" >&2
+    exit 2
+fi
+if ! command -v npm >/dev/null; then
+    echo "npm not found. Install Node.js 18.19 or later." >&2
+    exit 1
+fi
+
+cache_root="${XDG_CACHE_HOME:-$HOME/.cache}/climate-control"
+stage="$cache_root/venvs/$(printf '%s' "$root" | sha256sum | cut -c1-16)/frontend"
+mkdir -p "$stage"
+
+if ! cmp -s frontend/package-lock.json "$stage/installed-package-lock.json"; then
+    cp frontend/package.json frontend/package-lock.json "$stage/"
+    (cd "$stage" && npm ci --no-audit --no-fund --loglevel=error)
+    cp frontend/package-lock.json "$stage/installed-package-lock.json"
+fi
+
+rm -rf "$stage/src"
+cp -r frontend/src frontend/build.mjs frontend/tsconfig.json frontend/package.json "$stage/"
+
+cd "$stage"
+node_modules/.bin/tsc --noEmit
+if [[ "$1" == build ]]; then
+    node build.mjs --outfile="$module"
+    exit 0
+fi
+node build.mjs --outfile="$stage/heating-panel.js"
+if ! cmp -s "$stage/heating-panel.js" "$module"; then
+    echo "The heating panel module differs from its sources. Run scripts/panel build." >&2
+    exit 1
+fi

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import timedelta
+from functools import partial
 
 from homeassistant.config_entries import ConfigEntry, ConfigSubentry
 from homeassistant.const import Platform
@@ -20,6 +21,7 @@ from .const import (
 )
 from .house_mode import HouseModeController, async_remove_house_mode
 from .notifier import Notifier, async_remove_sent_alerts
+from .panel import async_register_panel, async_remove_panel
 from .presence import Presence
 from .repair_issues import async_track_offline_trvs
 from .room_controller import RoomController
@@ -92,6 +94,9 @@ async def async_setup_entry(
     notifier = Notifier(hass, entry, entry.runtime_data.rooms)
     entry.async_on_unload(notifier.async_stop)
     await notifier.async_start()
+
+    await async_register_panel(hass)
+    entry.async_on_unload(partial(async_remove_panel, hass))
 
     entry.async_on_unload(entry.add_update_listener(_async_reload))
 

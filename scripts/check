@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Lint, type check and test the integration. Runs on Linux (WSL on Windows).
 #
-#   scripts/check                   ruff check, ruff format --check, mypy, pytest
+#   scripts/check                   ruff check, ruff format --check, mypy,
+#                                   heating panel (scripts/panel check), pytest
 #   scripts/check <pytest args>     only pytest, e.g. scripts/check tests/test_init.py
 #
 # The virtualenv and all caches live on the Linux filesystem, one virtualenv per
@@ -36,4 +37,5 @@ fi
 uv run --no-sync ruff check .
 uv run --no-sync ruff format --check .
 uv run --no-sync mypy
+scripts/panel check
 "${pytest[@]}"
