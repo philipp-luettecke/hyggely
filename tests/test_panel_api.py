@@ -166,6 +166,7 @@ async def test_room_overview_is_refused_to_other_users(
     assert not response["success"]
     assert response["error"]["code"] == "unauthorized"
 
+
 async def test_return_to_auto_ends_an_override(
     hass: HomeAssistant,
     hass_ws_client: WebSocketGenerator,
