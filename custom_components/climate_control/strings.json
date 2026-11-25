@@ -80,7 +80,7 @@
       "step": {
         "user": {
           "title": "Add room",
-          "description": "Only give the room thermostats to the HomeKit Bridge, not the TRVs, so that Apple Home shows a single thermostat per room.",
+          "description": "Give the HomeKit Bridge and Google Assistant only the room thermostats, not the radiator thermostats (TRVs), so that Apple Home and Google Home show a single thermostat per room. The README explains both settings.",
           "data": {
             "name": "Name",
             "trvs": "Radiator thermostats",
@@ -177,27 +177,6 @@
     "sensor": {
       "reason": {
         "name": "Reason",
-        "state": {
-          "comfort": "Comfort",
-          "comfort_until": "Comfort until {until}",
-          "night": "Night",
-          "night_until": "Night until {until}",
-          "eco": "Eco",
-          "eco_until": "Eco until {until}",
-          "override": "Heating (manual)",
-          "override_until": "Heating until {until} (manual)",
-          "room_off": "Off",
-          "room_off_until": "Off until {until}",
-          "window_open": "Window open",
-          "window_open_since": "Window open since {since}",
-          "away": "Away",
-          "vacation": "Vacation",
-          "vacation_until": "Vacation until {until}",
-          "house_off": "House off",
-          "preheat": "Preheating to {level}",
-          "preheat_start": "Preheating to {level}, starts {start}",
-          "no_schedule": "No schedule – Eco"
-        },
         "state_attributes": {
           "reason_code": {
             "name": "Reason code"
@@ -260,6 +239,25 @@
   "common": {
     "notification_title": "Heating",
     "window_open": "Window open for more than {minutes} min: {rooms}",
-    "trv_offline": "Radiator thermostat unreachable for more than {minutes} min: {trvs}"
+    "trv_offline": "Radiator thermostat unreachable for more than {minutes} min: {trvs}",
+    "reason_comfort": "Comfort",
+    "reason_comfort_until": "Comfort until {until}",
+    "reason_night": "Night",
+    "reason_night_until": "Night until {until}",
+    "reason_eco": "Eco",
+    "reason_eco_until": "Eco until {until}",
+    "reason_override": "Heating (manual)",
+    "reason_override_until": "Heating until {until} (manual)",
+    "reason_room_off": "Off",
+    "reason_room_off_until": "Off until {until}",
+    "reason_window_open": "Window open",
+    "reason_window_open_since": "Window open since {since}",
+    "reason_away": "Away",
+    "reason_vacation": "Vacation",
+    "reason_vacation_until": "Vacation until {until}",
+    "reason_house_off": "House off",
+    "reason_preheat": "Preheating to {level}",
+    "reason_preheat_start": "Preheating to {level}, starts {start}",
+    "reason_no_schedule": "No schedule – Eco"
   }
 }

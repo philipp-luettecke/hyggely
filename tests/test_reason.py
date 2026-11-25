@@ -302,13 +302,13 @@ async def test_every_reason_code_has_a_text_in_the_language(
     hass: HomeAssistant, language: str
 ) -> None:
     """Reasons of later inputs are already translated, with and without a time."""
-    prefix = f"component.{DOMAIN}.entity.sensor.reason.state"
+    prefix = f"component.{DOMAIN}.common.reason"
 
-    texts = await async_get_translations(hass, language, "entity", [DOMAIN])
+    texts = await async_get_translations(hass, language, "common", [DOMAIN])
 
-    assert all(texts.get(f"{prefix}.{code}") for code in REASON_CODES)
+    assert all(texts.get(f"{prefix}_{code}") for code in REASON_CODES)
     for code in ("comfort", "night", "eco", "override", "room_off", "vacation"):
-        assert "{until}" in texts[f"{prefix}.{code}_until"]
-    assert "{since}" in texts[f"{prefix}.window_open_since"]
-    assert "{level}" in texts[f"{prefix}.preheat"]
-    assert "{start}" in texts[f"{prefix}.preheat_start"]
+        assert "{until}" in texts[f"{prefix}_{code}_until"]
+    assert "{since}" in texts[f"{prefix}_window_open_since"]
+    assert "{level}" in texts[f"{prefix}_preheat"]
+    assert "{start}" in texts[f"{prefix}_preheat_start"]

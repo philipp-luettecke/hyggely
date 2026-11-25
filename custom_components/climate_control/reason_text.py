@@ -1,10 +1,11 @@
 """Human-readable reasons in the language of Home Assistant.
 
-The texts live in the translations under `entity.sensor.reason.state`: `<code>`
-without a time, `<code>_until` with the moment the reason ends,
-`<code>_since` with the moment it began and `<code>_start` with the moment a
-block starts. A `{level}` in a text is the name of a schedule level, taken from
-the text of the reason code sharing its value.
+The texts live in the translations under `common`, the only category hassfest
+allows placeholders in: `reason_<code>` without a time, `reason_<code>_until`
+with the moment the reason ends, `reason_<code>_since` with the moment it began
+and `reason_<code>_start` with the moment a block starts. A `{level}` in a text
+is the name of a schedule level, taken from the text of the reason code sharing
+its value.
 """
 
 from __future__ import annotations
@@ -22,7 +23,7 @@ from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
 
-_TEXTS = f"component.{DOMAIN}.entity.sensor.reason.state"
+_TEXTS = f"component.{DOMAIN}.common.reason"
 _TIME_FORMAT = "%H:%M"
 _DATE_TIME_FORMATS = {"de": "%d.%m. %H:%M"}
 _DEFAULT_DATE_TIME_FORMAT = "%Y-%m-%d %H:%M"
@@ -31,7 +32,7 @@ _DECIMAL_COMMA_LANGUAGES = {"de"}
 
 async def async_load_reason_texts(hass: HomeAssistant) -> None:
     """Load the texts for the current language; `reason_text` needs them."""
-    await async_get_translations(hass, hass.config.language, "entity", [DOMAIN])
+    await async_get_translations(hass, hass.config.language, "common", [DOMAIN])
 
 
 @callback
@@ -43,7 +44,7 @@ def reason_text(
     Moments in `params` may be datetimes or ISO strings.
     """
     language = hass.config.language
-    texts = async_get_cached_translations(hass, language, "entity", DOMAIN)
+    texts = async_get_cached_translations(hass, language, "common", DOMAIN)
     key = code
     placeholders: dict[str, str] = {}
     if (until := _moment(params.get("until"))) is not None:
@@ -56,8 +57,8 @@ def reason_text(
         key = f"{code}_start"
         placeholders["start"] = _format_moment(start, now, language)
     if (level := params.get("level")) is not None:
-        placeholders["level"] = texts.get(f"{_TEXTS}.{level}", str(level))
-    template = texts.get(f"{_TEXTS}.{key}") or texts.get(f"{_TEXTS}.{code}")
+        placeholders["level"] = texts.get(f"{_TEXTS}_{level}", str(level))
+    template = texts.get(f"{_TEXTS}_{key}") or texts.get(f"{_TEXTS}_{code}")
     if template is None:
         return code
     return template.format(**placeholders)

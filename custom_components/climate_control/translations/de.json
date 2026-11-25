@@ -80,7 +80,7 @@
       "step": {
         "user": {
           "title": "Raum hinzufügen",
-          "description": "Gib nur die Raum-Thermostate an die HomeKit-Bridge, nicht die Heizkörperthermostate, damit Apple Home pro Raum nur ein Thermostat zeigt.",
+          "description": "Gib der HomeKit-Bridge und dem Google Assistant nur die Raum-Thermostate frei, nicht die Heizkörperthermostate (TRVs), damit Apple Home und Google Home pro Raum nur ein Thermostat zeigen. Beide Einstellungen erklärt die README.",
           "data": {
             "name": "Name",
             "trvs": "Heizkörperthermostate",
@@ -177,27 +177,6 @@
     "sensor": {
       "reason": {
         "name": "Grund",
-        "state": {
-          "comfort": "Komfort",
-          "comfort_until": "Komfort bis {until}",
-          "night": "Nacht",
-          "night_until": "Nacht bis {until}",
-          "eco": "Eco",
-          "eco_until": "Eco bis {until}",
-          "override": "Heizen (manuell)",
-          "override_until": "Heizen bis {until} (manuell)",
-          "room_off": "Aus",
-          "room_off_until": "Aus bis {until}",
-          "window_open": "Fenster offen",
-          "window_open_since": "Fenster offen seit {since}",
-          "away": "Abwesend",
-          "vacation": "Urlaub",
-          "vacation_until": "Urlaub bis {until}",
-          "house_off": "Haus aus",
-          "preheat": "Vorheizen auf {level}",
-          "preheat_start": "Vorheizen auf {level}, Beginn {start}",
-          "no_schedule": "Kein Zeitplan – Eco"
-        },
         "state_attributes": {
           "reason_code": {
             "name": "Grund-Code"
@@ -260,6 +239,25 @@
   "common": {
     "notification_title": "Heizung",
     "window_open": "Fenster seit über {minutes} min offen: {rooms}",
-    "trv_offline": "Heizkörperthermostat seit über {minutes} min nicht erreichbar: {trvs}"
+    "trv_offline": "Heizkörperthermostat seit über {minutes} min nicht erreichbar: {trvs}",
+    "reason_comfort": "Komfort",
+    "reason_comfort_until": "Komfort bis {until}",
+    "reason_night": "Nacht",
+    "reason_night_until": "Nacht bis {until}",
+    "reason_eco": "Eco",
+    "reason_eco_until": "Eco bis {until}",
+    "reason_override": "Heizen (manuell)",
+    "reason_override_until": "Heizen bis {until} (manuell)",
+    "reason_room_off": "Aus",
+    "reason_room_off_until": "Aus bis {until}",
+    "reason_window_open": "Fenster offen",
+    "reason_window_open_since": "Fenster offen seit {since}",
+    "reason_away": "Abwesend",
+    "reason_vacation": "Urlaub",
+    "reason_vacation_until": "Urlaub bis {until}",
+    "reason_house_off": "Haus aus",
+    "reason_preheat": "Vorheizen auf {level}",
+    "reason_preheat_start": "Vorheizen auf {level}, Beginn {start}",
+    "reason_no_schedule": "Kein Zeitplan – Eco"
   }
 }
