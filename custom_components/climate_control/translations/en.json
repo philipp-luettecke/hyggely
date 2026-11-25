@@ -97,10 +97,10 @@
           "data_description": {
             "trvs": "The radiator thermostats (TRVs) this room controls. All of them get the same target; the room shows the mean of their current temperatures.",
             "window_contacts": "While one of these contacts is open for longer than the window delay, the room gets frost protection. An unreachable contact counts as closed.",
-            "schedule": "Schedule helper of the room. During a block its level applies (comfort or night, comfort if none is set), eco outside.",
+            "schedule": "Schedule helper of the room. During a block its level applies (comfort or night, comfort if none is set), eco outside. Optional: without a schedule, or while its helper is missing or unavailable, the room holds eco.",
             "comfort_temperature": "Target temperature during a block with level comfort or without a level.",
             "night_temperature": "Target temperature during a block with level night.",
-            "eco_temperature": "Target temperature outside the blocks of the schedule.",
+            "eco_temperature": "Target temperature outside the blocks of the schedule and in a room without schedule.",
             "lead_time": "A warmer level of a block already applies this long before the block starts, so the room is warm in time. It never lowers early.",
             "area": "The room appears as a device in this area.",
             "override_expiry_policy": "When a manual override in this room returns to the schedule.",
@@ -125,10 +125,10 @@
           "data_description": {
             "trvs": "The radiator thermostats (TRVs) this room controls. All of them get the same target; the room shows the mean of their current temperatures.",
             "window_contacts": "While one of these contacts is open for longer than the window delay, the room gets frost protection. An unreachable contact counts as closed.",
-            "schedule": "Schedule helper of the room. During a block its level applies (comfort or night, comfort if none is set), eco outside.",
+            "schedule": "Schedule helper of the room. During a block its level applies (comfort or night, comfort if none is set), eco outside. Optional: without a schedule, or while its helper is missing or unavailable, the room holds eco.",
             "comfort_temperature": "Target temperature during a block with level comfort or without a level.",
             "night_temperature": "Target temperature during a block with level night.",
-            "eco_temperature": "Target temperature outside the blocks of the schedule.",
+            "eco_temperature": "Target temperature outside the blocks of the schedule and in a room without schedule.",
             "lead_time": "A warmer level of a block already applies this long before the block starts, so the room is warm in time. It never lowers early.",
             "area": "The room appears as a device in this area.",
             "override_expiry_policy": "When a manual override in this room returns to the schedule.",
@@ -195,7 +195,8 @@
           "vacation_until": "Vacation until {until}",
           "house_off": "House off",
           "preheat": "Preheating to {level}",
-          "preheat_start": "Preheating to {level}, starts {start}"
+          "preheat_start": "Preheating to {level}, starts {start}",
+          "no_schedule": "No schedule – Eco"
         },
         "state_attributes": {
           "reason_code": {

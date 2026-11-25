@@ -97,10 +97,10 @@
           "data_description": {
             "trvs": "Die Heizkörperthermostate, die dieser Raum steuert. Alle erhalten denselben Sollwert; der Raum zeigt den Mittelwert ihrer Ist-Temperaturen.",
             "window_contacts": "Ist einer dieser Kontakte länger als die Fenster-Verzögerung offen, erhält der Raum Frostschutz. Ein nicht erreichbarer Kontakt gilt als geschlossen.",
-            "schedule": "Zeitplan-Helfer des Raums. Während eines Blocks gilt seine Stufe (Komfort oder Nacht, ohne Angabe Komfort), sonst Eco.",
+            "schedule": "Zeitplan-Helfer des Raums. Während eines Blocks gilt seine Stufe (Komfort oder Nacht, ohne Angabe Komfort), sonst Eco. Optional: Ohne Zeitplan, oder wenn sein Helfer fehlt oder nicht verfügbar ist, hält der Raum Eco.",
             "comfort_temperature": "Solltemperatur während eines Blocks mit Stufe Komfort oder ohne Stufe.",
             "night_temperature": "Solltemperatur während eines Blocks mit Stufe Nacht.",
-            "eco_temperature": "Solltemperatur außerhalb der Blöcke im Zeitplan.",
+            "eco_temperature": "Solltemperatur außerhalb der Blöcke im Zeitplan und in einem Raum ohne Zeitplan.",
             "lead_time": "So lange vor Beginn eines Blocks gilt bereits seine Stufe, wenn sie wärmer ist, damit der Raum rechtzeitig warm ist. Früher abgesenkt wird nie.",
             "area": "Der Raum erscheint als Gerät in diesem Bereich.",
             "override_expiry_policy": "Wann eine manuelle Übersteuerung in diesem Raum zum Zeitplan zurückkehrt.",
@@ -125,10 +125,10 @@
           "data_description": {
             "trvs": "Die Heizkörperthermostate, die dieser Raum steuert. Alle erhalten denselben Sollwert; der Raum zeigt den Mittelwert ihrer Ist-Temperaturen.",
             "window_contacts": "Ist einer dieser Kontakte länger als die Fenster-Verzögerung offen, erhält der Raum Frostschutz. Ein nicht erreichbarer Kontakt gilt als geschlossen.",
-            "schedule": "Zeitplan-Helfer des Raums. Während eines Blocks gilt seine Stufe (Komfort oder Nacht, ohne Angabe Komfort), sonst Eco.",
+            "schedule": "Zeitplan-Helfer des Raums. Während eines Blocks gilt seine Stufe (Komfort oder Nacht, ohne Angabe Komfort), sonst Eco. Optional: Ohne Zeitplan, oder wenn sein Helfer fehlt oder nicht verfügbar ist, hält der Raum Eco.",
             "comfort_temperature": "Solltemperatur während eines Blocks mit Stufe Komfort oder ohne Stufe.",
             "night_temperature": "Solltemperatur während eines Blocks mit Stufe Nacht.",
-            "eco_temperature": "Solltemperatur außerhalb der Blöcke im Zeitplan.",
+            "eco_temperature": "Solltemperatur außerhalb der Blöcke im Zeitplan und in einem Raum ohne Zeitplan.",
             "lead_time": "So lange vor Beginn eines Blocks gilt bereits seine Stufe, wenn sie wärmer ist, damit der Raum rechtzeitig warm ist. Früher abgesenkt wird nie.",
             "area": "Der Raum erscheint als Gerät in diesem Bereich.",
             "override_expiry_policy": "Wann eine manuelle Übersteuerung in diesem Raum zum Zeitplan zurückkehrt.",
@@ -195,7 +195,8 @@
           "vacation_until": "Urlaub bis {until}",
           "house_off": "Haus aus",
           "preheat": "Vorheizen auf {level}",
-          "preheat_start": "Vorheizen auf {level}, Beginn {start}"
+          "preheat_start": "Vorheizen auf {level}, Beginn {start}",
+          "no_schedule": "Kein Zeitplan – Eco"
         },
         "state_attributes": {
           "reason_code": {

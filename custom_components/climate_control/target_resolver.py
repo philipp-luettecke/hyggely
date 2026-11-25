@@ -78,7 +78,7 @@ class ReasonCode(StrEnum):
     `since` (datetime) for window_open (when the window was opened);
     `level` (Level) and `start` (datetime) for preheat (the block whose level
     applies within the lead time and its start);
-    none for away and house_off.
+    none for away, house_off and no_schedule.
     """
 
     COMFORT = "comfort"
@@ -91,18 +91,22 @@ class ReasonCode(StrEnum):
     VACATION = "vacation"
     HOUSE_OFF = "house_off"
     PREHEAT = "preheat"
+    NO_SCHEDULE = "no_schedule"
 
 
 @dataclass(frozen=True, kw_only=True)
 class ScheduleLevel:
     """Effective level from the schedule and when it next changes.
 
+    `missing` while the room has no schedule or its helper is missing or
+    unavailable; eco applies then, without block boundary.
     `preheat_start` is the start of the block whose level already applies
     within the lead time; None outside the lead time.
     """
 
     level: Level
     next_block_boundary: datetime | None
+    missing: bool = False
     preheat_start: datetime | None = None
 
 
@@ -162,13 +166,16 @@ def override_expiry_for(
     """Return the override expiry of a room mode chosen at `now` (None: never).
 
     Off always returns at the next block boundary; heat follows the override
-    expiry rule.
+    expiry rule. Without a next block boundary both end after the duration of
+    the rule, so no room stays off or overridden for good.
     """
     if room_mode is RoomMode.AUTO:
         return None
+    after_duration = now + rule.duration
+    if next_block_boundary is None:
+        return after_duration
     if room_mode is RoomMode.OFF or rule.policy is OverrideExpiryPolicy.NEXT_BLOCK:
         return next_block_boundary
-    after_duration = now + rule.duration
     if rule.policy is OverrideExpiryPolicy.DURATION:
         return after_duration
     return _earliest(next_block_boundary, after_duration)
@@ -332,7 +339,9 @@ def _away(situation: _Situation) -> Decision | None:
 def _schedule_level(situation: _Situation) -> Decision:
     """Follow the schedule; preheating ends at the block start, so does its reason."""
     schedule = situation.snapshot.schedule
-    if schedule.preheat_start is not None:
+    if schedule.missing:
+        reason = Reason(code=ReasonCode.NO_SCHEDULE)
+    elif schedule.preheat_start is not None:
         reason = Reason(
             code=ReasonCode.PREHEAT,
             params={"level": schedule.level, "start": schedule.preheat_start},

@@ -172,7 +172,7 @@ class RoomController:
         }
         self._schedule = ScheduleReader(
             hass,
-            subentry.data[CONF_SCHEDULE],
+            subentry.data.get(CONF_SCHEDULE),
             timedelta(**subentry.data.get(CONF_LEAD_TIME, DEFAULT_LEAD_TIME)),
             self._level_temperatures,
         )
@@ -325,11 +325,8 @@ class RoomController:
         expiry rule says.
         """
         if room_mode is RoomMode.HEAT:
-            schedule = self._schedule.read()
-            if schedule is None:
-                return
             temperature = heat_temperature(
-                self._snapshot_at(dt_util.utcnow(), schedule)
+                self._snapshot_at(dt_util.utcnow(), self._schedule.read())
             )
             await self._async_choose(RoomMode.HEAT, temperature)
         else:
@@ -339,14 +336,13 @@ class RoomController:
     async def _async_choose(
         self, room_mode: RoomMode, temperature: float | None
     ) -> None:
-        schedule = self._schedule.read()
         self._choice = RoomModeChoice(
             room_mode=room_mode,
             override_temperature=temperature,
             override_expiry=override_expiry_for(
                 room_mode,
                 now=dt_util.utcnow(),
-                next_block_boundary=schedule.next_block_boundary if schedule else None,
+                next_block_boundary=self._schedule.read().next_block_boundary,
                 rule=self._override_expiry_rule,
             ),
         )
@@ -465,8 +461,6 @@ class RoomController:
         async with self._evaluation_lock:
             self._cancel_pending_reevaluation()
             schedule = self._schedule.read()
-            if schedule is None:
-                return
             self._next_block_boundary = schedule.next_block_boundary
             now = dt_util.utcnow()
             snapshot = self._snapshot_at(now, schedule)

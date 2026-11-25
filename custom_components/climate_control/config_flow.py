@@ -130,7 +130,7 @@ def _room_schema() -> probatio.Schema:
             ): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="binary_sensor", multiple=True)
             ),
-            probatio.Required(CONF_SCHEDULE): selector.EntitySelector(
+            probatio.Optional(CONF_SCHEDULE): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="schedule")
             ),
             probatio.Required(

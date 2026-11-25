@@ -293,6 +293,7 @@ REASON_CODES = [
     "vacation",
     "house_off",
     "preheat",
+    "no_schedule",
 ]
 
 

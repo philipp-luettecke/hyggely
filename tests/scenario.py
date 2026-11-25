@@ -96,6 +96,12 @@ class Schedules:
             }
         )
 
+    async def delete(self, entity_id: str) -> None:
+        """Delete a schedule helper."""
+        await self._send(
+            {"type": "schedule/delete", "schedule_id": self._ids.pop(entity_id)}
+        )
+
     async def _send(self, message: dict[str, Any]) -> dict[str, Any]:
         await self._client.send_json_auto_id(message)
         response = await self._client.receive_json()
@@ -135,11 +141,15 @@ async def start_up(hass: HomeAssistant, entry: ConfigEntry) -> None:
 
 def room_settings(subentry: ConfigSubentry) -> dict[str, Any]:
     """Return the values of the room dialog as currently configured."""
-    optional = ("window_contacts", "override_expiry_policy", "override_expiry_duration")
+    optional = (
+        "window_contacts",
+        "schedule",
+        "override_expiry_policy",
+        "override_expiry_duration",
+    )
     return {
         "name": subentry.title,
         "trvs": subentry.data["trvs"],
-        "schedule": subentry.data["schedule"],
         "comfort_temperature": subentry.data["comfort_temperature"],
         "night_temperature": subentry.data["night_temperature"],
         "eco_temperature": subentry.data["eco_temperature"],
@@ -155,7 +165,7 @@ async def add_room(
     *,
     name: str,
     trvs: list[str],
-    schedule: str,
+    schedule: str | None,
     area: str,
     comfort_temperature: float = 21.0,
     night_temperature: float = 16.0,
@@ -163,19 +173,20 @@ async def add_room(
     lead_minutes: int = 0,
     window_contacts: list[str] | None = None,
 ) -> ConfigSubentry:
-    """Add a room through the room dialog of the main entry."""
+    """Add a room through the room dialog; `schedule` None leaves it out."""
     result = await hass.config_entries.subentries.async_init(
         (entry.entry_id, "room"), context={"source": SOURCE_USER}
     )
     assert result["type"] is FlowResultType.FORM
     contacts = {} if window_contacts is None else {"window_contacts": window_contacts}
+    chosen_schedule = {} if schedule is None else {"schedule": schedule}
     result = await hass.config_entries.subentries.async_configure(
         result["flow_id"],
         {
             "name": name,
             "trvs": trvs,
             **contacts,
-            "schedule": schedule,
+            **chosen_schedule,
             "comfort_temperature": comfort_temperature,
             "night_temperature": night_temperature,
             "eco_temperature": eco_temperature,
@@ -306,16 +317,20 @@ async def change_room(
     hass: HomeAssistant,
     entry: ConfigEntry,
     subentry: ConfigSubentry,
+    *,
+    without: tuple[str, ...] = (),
     **changes: Any,
 ) -> None:
-    """Change settings of a room in its options dialog."""
+    """Change settings of a room in its options dialog; clear those `without`."""
     result = await hass.config_entries.subentries.async_init(
         (entry.entry_id, "room"),
         context={"source": SOURCE_RECONFIGURE, "subentry_id": subentry.subentry_id},
     )
     assert result["type"] is FlowResultType.FORM
+    settings = {**room_settings(subentry), **changes}
     result = await hass.config_entries.subentries.async_configure(
-        result["flow_id"], {**room_settings(subentry), **changes}
+        result["flow_id"],
+        {key: value for key, value in settings.items() if key not in without},
     )
     await hass.async_block_till_done()
     assert result["type"] is FlowResultType.ABORT

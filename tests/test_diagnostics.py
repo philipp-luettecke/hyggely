@@ -71,6 +71,7 @@ async def test_diagnostics_hold_settings_snapshots_and_decisions_but_no_persons(
     assert living["snapshot"]["schedule"] == {
         "level": "comfort",
         "next_block_boundary": "2026-11-16T08:00:00+00:00",
+        "missing": False,
         "preheat_start": None,
     }
     assert living["snapshot"]["room_mode"] == "auto"
