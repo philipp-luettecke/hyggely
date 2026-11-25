@@ -33,6 +33,7 @@ from .presence import Presence
 from .repair_issues import async_track_offline_trvs
 from .room_controller import RoomController
 from .room_mode_store import RoomModeStore, async_remove_room_modes
+from .services import async_setup_services
 
 PLATFORMS = [
     Platform.BINARY_SENSOR,
@@ -59,8 +60,9 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 
 async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:
-    """Offer the panel API; it answers for the main entry once that is loaded."""
+    """Offer the panel API and the services; they act once the main entry is loaded."""
     async_register_commands(hass)
+    async_setup_services(hass)
     return True
 
 

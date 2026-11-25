@@ -22,5 +22,10 @@
         }
       }
     }
+  },
+  "services": {
+    "start_vacation": {
+      "service": "mdi:beach"
+    }
   }
 }

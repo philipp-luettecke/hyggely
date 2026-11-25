@@ -1,0 +1,6 @@
+start_vacation:
+  fields:
+    end:
+      required: true
+      selector:
+        datetime:
