@@ -6,7 +6,7 @@ Spec: `.scratch/heating-control/spec.md`
 
 **Blocked by:** 15
 
-**Status:** ready-for-human
+**Status:** done
 
 - [ ] Beide haben den Prototyp auf dem Handy benutzt
 - [ ] Die offenen Gestaltungsfragen aus Ticket 15 sind beantwortet
@@ -30,4 +30,4 @@ Spec: `.scratch/heating-control/spec.md`
 11. **Abwesend:** Chip in der Übersicht bleibt. Die Abwesend-Karte unter „Haus“ listet zusätzlich die konfigurierten Personen mit „zu Hause“, „unterwegs“ oder „unbekannt – zählt als zu Hause“. Die Panel API liefert sie mit. Kein Countdown bis Abwesend. Umsetzung in Ticket 20.
 12. **Aufteilung: drei Reiter Übersicht, Räume und Haus** (entschieden nach Ausprobieren im Prototyp, `prototype/15-panel`, Commit `d86014b`, Aufteilung „3R“). Unter „Räume“ wählt man den Raum über Raum-Chips. Die Raumseite zeigt untereinander: Zuweisung des Zeitplans mit „Zeitplan anlegen“, bei geteiltem Zeitplan „gilt auch für …“ mit Warnhinweis und „Für <Raum> abtrennen“, die Farblegende, Wochenübersicht und Zeitleiste (Variante B), dann Stufen und Vorlaufzeit. Ein Raum ohne Zeitplan zeigt stattdessen „hält Eco“ und „Zeitplan anlegen“. Unter „Haus“ stehen Hausbetriebsart und Urlaub, die Abwesend-Karte mit Personen und die globalen Temperaturen für Abwesend, Urlaub und Frostschutz. Folgen für frühere Antworten: Der Sprung aus der Übersicht (4) führt auf die Raumseite. Eine eigene Liste der Zeitpläne gibt es nicht mehr; damit entfallen der Raumname am Zeitplan-Chip (5) und die Regel „nur zugewiesene Zeitpläne in der Liste“ (7). Fremde Zeitplan-Helfer erscheinen nur in der Auswahl bei der Zuweisung. „Löschen / Behalten“ für einen Zeitplan ohne Raum bleibt.
 
-**Stand:** Alle zwölf Fragen sind entschieden. Ticket bleibt `ready-for-human`, bis der Haushalt (Admin und Bewohnerin) den Prototyp auf dem Handy benutzt und abgenommen hat.
+**Abgenommen (Admin, 25.11.2026):** Alle zwölf Fragen sind entschieden, der Admin nimmt den Prototyp ausdrücklich ab. Abweichung vom ersten Kriterium: Die Bewohnerin hat den Prototyp nicht auf dem Handy benutzt; der Admin nimmt ohne ihren Test ab. Ihre Rückmeldung kommt bei Bedarf über die Abnahme-Checklisten der Tickets 17 bis 20 auf dem Handy.
