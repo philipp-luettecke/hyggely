@@ -7,8 +7,9 @@ from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import config_validation as cv
 import probatio
+import pytest
 
-from tests.scenario import Clock, Schedules, living_room
+from tests.scenario import Clock, Schedules, commands, living_room
 from tests.simulated_trv import SimulatedTrvs
 
 DOMAIN = "climate_control"
@@ -38,6 +39,31 @@ async def test_room_entity_offers_whole_degrees(
     room = await living_room(hass, schedules, simulated_trvs)
 
     assert room.state(hass).attributes["target_temp_step"] == 1.0
+
+
+@pytest.mark.parametrize(
+    ("asked", "target"), [(21.5, 22.0), (20.5, 21.0), (21.4, 21.0), (22.0, 22.0)]
+)
+async def test_override_with_half_degrees_is_rounded_to_whole_degrees(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+    asked: float,
+    target: float,
+) -> None:
+    """Siri or an automation asking for 21.5 °C overrides with 22 °C, half up."""
+    clock.set("2026-11-16 08:00")
+    room = await living_room(hass, schedules, simulated_trvs)
+
+    await room.call(hass, "set_temperature", temperature=asked)
+
+    assert room.state(hass).state == "heat"
+    assert room.state(hass).attributes["temperature"] == target
+    assert commands(room.trv)[-1] == (
+        "set_temperature",
+        {"temperature": target, "hvac_mode": "heat"},
+    )
 
 
 async def test_room_dialog_offers_whole_degrees_for_the_levels(

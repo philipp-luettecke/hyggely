@@ -34,3 +34,7 @@ Offene Fragen an den Admin, nicht umgesetzt:
 
    Empfehlung: **B.** Das entspricht dem Wortlaut aus Ticket 16 und dem Drehknopf, und es ist auf `RoomClimate.async_set_temperature` begrenzt. Die Dialoge sollten vorhandene halbe Werte wie bisher behalten (also nicht C), passend zu „Vorhandene halbe Werte werden angezeigt“.
 2. **Vorlaufzeit im Raum-Dialog.** Die Grenze 0–3 Stunden in 15-Minuten-Schritten ist im Ticket nur für das Panel festgelegt. Der Raum-Dialog nimmt weiterhin jede Dauer an. Empfehlung: im Dialog unverändert lassen; die Vorgabe kann das Panel-Ticket bei Bedarf in die Panel API mitnehmen.
+
+**Entscheidung Admin (25.11.2026):**
+1. Rundung: Ja (Variante B). Das Raum-Thermostat rundet jede Übersteuerung, etwa per Siri, HomeKit oder Automation über `climate.set_temperature`, kaufmännisch auf ganze Grad (21,5 → 22, 20,5 → 21; nicht Pythons `round`). Vorhandene halbe Werte in den Dialogen bleiben gültig.
+2. Vorlaufzeit im Raum-Dialog: unverändert. Die Grenze 0–3 Stunden in 15-Minuten-Schritten gilt nur im Panel.
