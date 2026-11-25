@@ -76,6 +76,8 @@ class ReasonCode(StrEnum):
     `until` (datetime | None) for comfort, night, eco (next block boundary),
     override and room_off (when the room returns to auto) and vacation (its end);
     `since` (datetime) for window_open (when the window was opened);
+    `level` (Level) and `start` (datetime) for preheat (the block whose level
+    applies within the lead time and its start);
     none for away and house_off.
     """
 
@@ -88,14 +90,20 @@ class ReasonCode(StrEnum):
     AWAY = "away"
     VACATION = "vacation"
     HOUSE_OFF = "house_off"
+    PREHEAT = "preheat"
 
 
 @dataclass(frozen=True, kw_only=True)
 class ScheduleLevel:
-    """Effective level from the schedule and when it next changes."""
+    """Effective level from the schedule and when it next changes.
+
+    `preheat_start` is the start of the block whose level already applies
+    within the lead time; None outside the lead time.
+    """
 
     level: Level
     next_block_boundary: datetime | None
+    preheat_start: datetime | None = None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -322,17 +330,25 @@ def _away(situation: _Situation) -> Decision | None:
 
 
 def _schedule_level(situation: _Situation) -> Decision:
+    """Follow the schedule; preheating ends at the block start, so does its reason."""
     schedule = situation.snapshot.schedule
+    if schedule.preheat_start is not None:
+        reason = Reason(
+            code=ReasonCode.PREHEAT,
+            params={"level": schedule.level, "start": schedule.preheat_start},
+        )
+    else:
+        reason = Reason(
+            code=ReasonCode(schedule.level.value),
+            params={"until": schedule.next_block_boundary},
+        )
     return Decision(
         room_mode=RoomMode.AUTO,
         target_temperature=situation.snapshot.level_temperatures[schedule.level],
         level=schedule.level,
         trv_mode=TrvMode.HEAT,
-        reason=Reason(
-            code=ReasonCode(schedule.level.value),
-            params={"until": schedule.next_block_boundary},
-        ),
-        reevaluate_at=schedule.next_block_boundary,
+        reason=reason,
+        reevaluate_at=_earliest(schedule.next_block_boundary, schedule.preheat_start),
     )
 
 

@@ -4,11 +4,17 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import timedelta
+from functools import partial
 
 from homeassistant.config_entries import ConfigEntry, ConfigSubentry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import (
+    config_validation as cv,
+    device_registry as dr,
+)
+from homeassistant.helpers.dispatcher import async_dispatcher_send
+from homeassistant.helpers.typing import ConfigType
 
 from .command_pacer import CommandPacer
 from .const import (
@@ -16,10 +22,13 @@ from .const import (
     CONF_PERSONS,
     CONF_PRESENCE_DELAY,
     DOMAIN,
+    SIGNAL_ROOMS_CHANGED,
     SUBENTRY_TYPE_ROOM,
 )
 from .house_mode import HouseModeController, async_remove_house_mode
 from .notifier import Notifier, async_remove_sent_alerts
+from .panel import async_register_panel, async_remove_panel
+from .panel_api import async_register_commands
 from .presence import Presence
 from .repair_issues import async_track_offline_trvs
 from .room_controller import RoomController
@@ -45,6 +54,14 @@ class RuntimeData:
 
 
 type ClimateControlConfigEntry = ConfigEntry[RuntimeData]
+
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+
+
+async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:
+    """Offer the panel API; it answers for the main entry once that is loaded."""
+    async_register_commands(hass)
+    return True
 
 
 async def async_setup_entry(
@@ -84,14 +101,20 @@ async def async_setup_entry(
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
+    announce_rooms_changed = partial(async_dispatcher_send, hass, SIGNAL_ROOMS_CHANGED)
     for controller in entry.runtime_data.rooms.values():
         entry.async_on_unload(controller.async_stop)
         entry.async_on_unload(async_track_offline_trvs(hass, entry, controller))
+        entry.async_on_unload(controller.async_add_listener(announce_rooms_changed))
         await controller.async_start()
 
     notifier = Notifier(hass, entry, entry.runtime_data.rooms)
     entry.async_on_unload(notifier.async_stop)
     await notifier.async_start()
+
+    await async_register_panel(hass)
+    entry.async_on_unload(partial(async_remove_panel, hass))
+    announce_rooms_changed()
 
     entry.async_on_unload(entry.add_update_listener(_async_reload))
 

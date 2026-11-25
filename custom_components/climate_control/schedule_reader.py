@@ -169,8 +169,8 @@ def _level_at(
     moment: datetime,
     lead_time: timedelta,
     temperatures: Mapping[Level, float],
-) -> Level:
-    """Return the level at `moment`.
+) -> tuple[Level, datetime | None]:
+    """Return the level at `moment` and the start of the block it preheats for.
 
     A block starting within the lead time wins over the level in progress
     (a block or eco) only if it is warmer, the warmest of them if several; so
@@ -181,13 +181,15 @@ def _level_at(
         (block.level for block in blocks if block.start <= moment < block.end),
         Level.ECO,
     )
+    preheat_start = None
     for block in blocks:
         if (
             moment < block.start <= moment + lead_time
             and temperatures[block.level] > temperatures[level]
         ):
             level = block.level
-    return level
+            preheat_start = block.start
+    return level, preheat_start
 
 
 def _schedule_level(
@@ -196,8 +198,8 @@ def _schedule_level(
     lead_time: timedelta,
     temperatures: Mapping[Level, float],
 ) -> ScheduleLevel:
-    """Return the level at `now` and the next moment it changes."""
-    level = _level_at(blocks, now, lead_time, temperatures)
+    """Return the level at `now`, the next moment it changes and any preheating."""
+    level, preheat_start = _level_at(blocks, now, lead_time, temperatures)
     moments = sorted(
         {
             moment
@@ -210,8 +212,12 @@ def _schedule_level(
         (
             moment
             for moment in moments
-            if _level_at(blocks, moment, lead_time, temperatures) != level
+            if _level_at(blocks, moment, lead_time, temperatures)[0] != level
         ),
         None,
     )
-    return ScheduleLevel(level=level, next_block_boundary=next_block_boundary)
+    return ScheduleLevel(
+        level=level,
+        next_block_boundary=next_block_boundary,
+        preheat_start=preheat_start,
+    )
