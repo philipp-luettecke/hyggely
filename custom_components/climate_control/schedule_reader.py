@@ -48,16 +48,20 @@ class ScheduleReader:
     without one is comfort, outside blocks eco applies. The level of a block
     applies from its start until its end, and already from the lead time
     before its start if it is warmer in the room than the level until then.
+    Without a helper, or while it is missing or unavailable, eco applies.
     """
 
     def __init__(
         self,
         hass: HomeAssistant,
-        entity_id: str,
+        entity_id: str | None,
         lead_time: timedelta,
         level_temperatures: Mapping[Level, float],
     ) -> None:
-        """Read `entity_id` with the lead time and level temperatures of the room."""
+        """Read `entity_id` with the lead time and level temperatures of the room.
+
+        `entity_id` is None for a room without schedule.
+        """
         self._hass = hass
         self._entity_id = entity_id
         self._lead_time = lead_time
@@ -71,23 +75,26 @@ class ScheduleReader:
         unchanged; it then only reports its state, so both events count.
         Returns the unsubscriber.
         """
-        await self._async_load()
+        if self._entity_id is None:
+            return lambda: None
+        entity_id = self._entity_id
+        await self._async_load(entity_id)
         stopped = False
 
         async def _async_reload() -> None:
-            await self._async_load()
+            await self._async_load(entity_id)
             if not stopped:
                 on_change()
 
         @callback
         def _changed(_event: Event[Any]) -> None:
             self._hass.async_create_task(
-                _async_reload(), f"reload schedule {self._entity_id}"
+                _async_reload(), f"reload schedule {entity_id}"
             )
 
         unsubscribers = [
-            async_track_state_change_event(self._hass, [self._entity_id], _changed),
-            async_track_state_report_event(self._hass, [self._entity_id], _changed),
+            async_track_state_change_event(self._hass, [entity_id], _changed),
+            async_track_state_report_event(self._hass, [entity_id], _changed),
         ]
 
         @callback
@@ -100,15 +107,21 @@ class ScheduleReader:
         return _stop
 
     @callback
-    def read(self) -> ScheduleLevel | None:
-        """Return the effective level now, or None while it is not known."""
-        state = self._hass.states.get(self._entity_id)
+    def read(self) -> ScheduleLevel:
+        """Return the effective level now; eco while the helper is not known."""
+        state = (
+            self._hass.states.get(self._entity_id)
+            if self._entity_id is not None
+            else None
+        )
         if (
             self._week is None
             or state is None
             or state.state not in (STATE_ON, STATE_OFF)
         ):
-            return None
+            return ScheduleLevel(
+                level=Level.ECO, next_block_boundary=None, missing=True
+            )
         now = dt_util.utcnow()
         return _schedule_level(
             _blocks_from(self._week, now),
@@ -117,19 +130,19 @@ class ScheduleReader:
             self._level_temperatures,
         )
 
-    async def _async_load(self) -> None:
+    async def _async_load(self, entity_id: str) -> None:
         try:
             response = await self._hass.services.async_call(
                 SCHEDULE_DOMAIN,
                 SERVICE_GET_SCHEDULE,
-                {ATTR_ENTITY_ID: self._entity_id},
+                {ATTR_ENTITY_ID: entity_id},
                 blocking=True,
                 return_response=True,
             )
         except HomeAssistantError:
             self._week = None
             return
-        week = (response or {}).get(self._entity_id)
+        week = (response or {}).get(entity_id)
         self._week = week if isinstance(week, Mapping) else None
 
 

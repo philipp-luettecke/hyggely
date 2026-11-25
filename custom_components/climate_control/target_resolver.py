@@ -76,7 +76,7 @@ class ReasonCode(StrEnum):
     `until` (datetime | None) for comfort, night, eco (next block boundary),
     override and room_off (when the room returns to auto) and vacation (its end);
     `since` (datetime) for window_open (when the window was opened);
-    none for away and house_off.
+    none for away, house_off and no_schedule.
     """
 
     COMFORT = "comfort"
@@ -88,14 +88,20 @@ class ReasonCode(StrEnum):
     AWAY = "away"
     VACATION = "vacation"
     HOUSE_OFF = "house_off"
+    NO_SCHEDULE = "no_schedule"
 
 
 @dataclass(frozen=True, kw_only=True)
 class ScheduleLevel:
-    """Effective level from the schedule and when it next changes."""
+    """Effective level from the schedule and when it next changes.
+
+    `missing` while the room has no schedule or its helper is missing or
+    unavailable; eco applies then, without block boundary.
+    """
 
     level: Level
     next_block_boundary: datetime | None
+    missing: bool = False
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -323,6 +329,15 @@ def _away(situation: _Situation) -> Decision | None:
 
 def _schedule_level(situation: _Situation) -> Decision:
     schedule = situation.snapshot.schedule
+    if schedule.missing:
+        return Decision(
+            room_mode=RoomMode.AUTO,
+            target_temperature=situation.snapshot.level_temperatures[Level.ECO],
+            level=Level.ECO,
+            trv_mode=TrvMode.HEAT,
+            reason=Reason(code=ReasonCode.NO_SCHEDULE),
+            reevaluate_at=None,
+        )
     return Decision(
         room_mode=RoomMode.AUTO,
         target_temperature=situation.snapshot.level_temperatures[schedule.level],

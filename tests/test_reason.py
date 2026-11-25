@@ -233,6 +233,7 @@ REASON_CODES = [
     "away",
     "vacation",
     "house_off",
+    "no_schedule",
 ]
 
 
