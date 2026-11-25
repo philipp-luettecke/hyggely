@@ -6,7 +6,7 @@ Spec: `.scratch/heating-control/spec.md`
 
 **Blocked by:** 04, 17
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Pro Raum lassen sich Komfort, Nacht, Eco und Vorlaufzeit auf der Raumseite unter „Räume“ ändern
 - [ ] Die globalen Temperaturen für Abwesend, Urlaub und Frostschutz lassen sich im Reiter „Haus“ ändern
@@ -56,3 +56,16 @@ Offene Fragen an den Admin, nicht umgesetzt:
 - Gemeinsame Bausteine in `frontend/src/stepper.ts` (−/+, Rundung, verzögertes Speichern), API-Aufrufe in `frontend/src/api/levels.ts`. Die Werte werden beim Öffnen des Raums bzw. des Reiters geladen; eine Änderung im Optionsdialog erscheint im offenen Panel erst nach erneutem Öffnen.
 
 **Nebenbei:** Nach dem Merge von Ticket 17 meldete `scripts/check` Ruff-Befunde in Dateien von 17 (`panel.py`, `tests/test_panel_api.py`, Docstring von `panel_api/house.py`). Sie sind hier minimal behoben, ohne die Logik zu ändern.
+
+**Offen: Abnahme auf dem Handy** (Checkliste, iOS und Android in der Home-Assistant-App, als Kommentar hier ablegen):
+- [ ] Räume → Raum wählen: „Stufen und Vorlaufzeit“ zeigt Komfort, Nacht, Eco und Vorlaufzeit mit den Werten aus dem Optionsdialog
+- [ ] −/+ ändert Temperaturen in ganzen Grad; ein halber Wert (vorher im Dialog eingetippt, z. B. 21,5) wird angezeigt und springt auf 22 bzw. 21
+- [ ] Bei 5 °C ist −, bei 25 °C ist + gesperrt; die Vorlaufzeit geht in 15-Minuten-Schritten von 0 bis 3 h
+- [ ] Nach dem letzten Tipp ändert sich nach etwa 1 Sekunde der Sollwert im Kopf der Raumseite und in der Übersicht (wenn die geänderte Stufe gerade gilt)
+- [ ] Nacht oder Eco über Komfort: Hinweis „… ist wärmer als Komfort – gewollt?“, der Wert bleibt gespeichert
+- [ ] Mehrmals schnell tippen und sofort die App in den Hintergrund schicken: der letzte Wert ist gespeichert (Optionsdialog des Raums)
+- [ ] Haus: Abwesend, Urlaub und Frostschutz mit −/+ ändern; danach im Optionsdialog der Integration sichtbar
+- [ ] Siri „Stell das Wohnzimmer auf 21,5 Grad“ ergibt Heizen mit 22 °C
+- [ ] Knöpfe sind mit dem Daumen gut treffbar, dunkles Theme lesbar
+
+**Abgeschlossen:** Merge-Commit `bf7b973` auf `feat/heating-control`. Ergebnis: Stufen und Vorlaufzeit pro Raum auf der Raumseite, globale Temperaturen im Reiter Haus, −/+ in ganzen Grad und Vorlaufzeit in 15-Minuten-Schritten bis 3 h, Hinweis bei Nacht oder Eco wärmer als Komfort, Panel API dazu; `TEMPERATURE_STEP` 1 °C in Dialogen und am Raum-Thermostat, Übersteuerungen kaufmännisch auf ganze Grad gerundet; 260 Tests grün. Die Abnahme auf dem Handy steht noch aus (Checkliste oben).
