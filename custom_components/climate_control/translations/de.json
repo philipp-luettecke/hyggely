@@ -236,6 +236,24 @@
   "exceptions": {
     "vacation_end_not_ahead": {
       "message": "Urlaub braucht ein Urlaubsende in der Zukunft. Setze zuerst das Urlaubsende."
+    },
+    "vacation_end_must_be_ahead": {
+      "message": "Das Urlaubsende muss in der Zukunft liegen."
+    },
+    "not_loaded": {
+      "message": "Die Heizungssteuerung läuft nicht. Prüfe die Integration unter Einstellungen > Geräte & Dienste."
+    }
+  },
+  "services": {
+    "start_vacation": {
+      "name": "Urlaub starten",
+      "description": "Setzt das Urlaubsende und schaltet die Hausbetriebsart auf Urlaub. Alle Räume erhalten bis zum Ende die Urlaubstemperatur, danach kehrt das Haus zu Automatik zurück.",
+      "fields": {
+        "end": {
+          "name": "Ende",
+          "description": "Wann der Urlaub endet. Muss in der Zukunft liegen."
+        }
+      }
     }
   },
   "common": {

@@ -5,7 +5,12 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from datetime import datetime, timedelta
 
-from homeassistant.const import STATE_HOME, STATE_UNAVAILABLE, STATE_UNKNOWN
+from homeassistant.const import (
+    STATE_HOME,
+    STATE_NOT_HOME,
+    STATE_UNAVAILABLE,
+    STATE_UNKNOWN,
+)
 from homeassistant.core import (
     CALLBACK_TYPE,
     Event,
@@ -46,6 +51,18 @@ class Presence:
     def away(self) -> bool:
         """Return whether the house is away."""
         return self._away
+
+    @property
+    def persons(self) -> list[str]:
+        """Return the configured persons (person entity ids)."""
+        return list(self._persons)
+
+    def person_presence(self, person: str) -> str:
+        """Return `home`, `not_home` or `unknown` (counts as home) for `person`."""
+        state = self._hass.states.get(person)
+        if state is None or state.state in (STATE_UNKNOWN, STATE_UNAVAILABLE):
+            return STATE_UNKNOWN
+        return STATE_HOME if state.state == STATE_HOME else STATE_NOT_HOME
 
     @callback
     def async_add_listener(self, listener: Callable[[], None]) -> CALLBACK_TYPE:
