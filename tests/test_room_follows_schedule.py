@@ -204,13 +204,13 @@ async def test_changed_levels_in_the_room_options_apply_at_once(
     clock.set("2026-11-16 08:00")
     room = await living_room(hass, schedules, simulated_trvs)
 
-    await change_room(hass, room.entry, room.subentry, comfort_temperature=22.5)
+    await change_room(hass, room.entry, room.subentry, comfort_temperature=22.0)
 
-    assert room.subentry.data["comfort_temperature"] == 22.5
-    assert room.state(hass).attributes["temperature"] == 22.5
+    assert room.subentry.data["comfort_temperature"] == 22.0
+    assert room.state(hass).attributes["temperature"] == 22.0
     assert commands(room.trv)[-1] == (
         "set_temperature",
-        {"temperature": 22.5, "hvac_mode": "heat"},
+        {"temperature": 22.0, "hvac_mode": "heat"},
     )
 
 

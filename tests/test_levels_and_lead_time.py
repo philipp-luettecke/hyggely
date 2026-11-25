@@ -484,16 +484,16 @@ async def test_night_temperature_and_lead_time_change_in_the_room_options(
         hass,
         room.entry,
         room.subentry,
-        night_temperature=18.5,
+        night_temperature=18.0,
         lead_time=duration(60),
     )
 
-    assert room.subentry.data["night_temperature"] == 18.5
+    assert room.subentry.data["night_temperature"] == 18.0
     assert room.subentry.data["lead_time"] == duration(60)
-    assert room.state(hass).attributes["temperature"] == 18.5
+    assert room.state(hass).attributes["temperature"] == 18.0
     assert commands(room.trv) == [
         HEAT_17,
-        ("set_temperature", {"temperature": 18.5, "hvac_mode": "heat"}),
+        ("set_temperature", {"temperature": 18.0, "hvac_mode": "heat"}),
     ]
 
 
