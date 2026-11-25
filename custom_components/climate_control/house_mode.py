@@ -98,6 +98,19 @@ class HouseModeController:
         self._vacation_end = vacation_end
         await self._async_follow_vacation_end()
 
+    async def async_start_vacation(self, vacation_end: datetime) -> None:
+        """Set the vacation end and switch to vacation in one step.
+
+        An end not in the future is refused and changes nothing.
+        """
+        if vacation_end <= dt_util.utcnow():
+            raise ServiceValidationError(
+                translation_domain=DOMAIN, translation_key="vacation_end_must_be_ahead"
+            )
+        self._vacation_end = vacation_end
+        self._house_mode = HouseMode.VACATION
+        await self._async_follow_vacation_end()
+
     def _vacation_end_ahead(self) -> bool:
         return self._vacation_end is not None and self._vacation_end > dt_util.utcnow()
 
