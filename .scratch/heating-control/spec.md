@@ -223,18 +223,18 @@ Fenster offen, Abwesenheit und Urlaub greifen automatisch. Benachrichtigungen gi
 10. **Heating Panel**: eigener Seitenleisten-Eintrag „Heizung“, nur für Admins, für das Handy ausgelegt, von der Integration als JavaScript-Modul ausgeliefert.
     - Inhalte in Version 1:
       - Raumübersicht mit Ist, Soll, Modus und Grund; Antippen beendet die Übersteuerung.
-      - Wochenraster pro Zeitplan mit Blöcken und Stufen, inklusive „gilt für“-Anzeige.
+      - Wochenraster des Zeitplans pro Raum mit Blöcken und Stufen, inklusive „gilt für“-Anzeige bei geteilten Zeitplänen.
       - Stufentemperaturen und Vorlaufzeit pro Raum.
       - Hausbetriebsart und Urlaub mit Enddatum.
       - Zeitplan für einen Raum anlegen.
     - Das Panel enthält keine Heizlogik. Es spricht nur mit der Panel API und der nativen Zeitplan-Schnittstelle. Interne `ha-*`-Komponenten des Frontends werden nicht vorausgesetzt.
     - Vor dem Panel entsteht ein klickbarer Wegwerf-Prototyp mit Beispieldaten. Die Rückmeldung des Haushalts verfeinert die Panel-Tickets.
     - Gestaltung laut Abnahme (Ticket 16):
+      - Drei Reiter: Übersicht, Räume und Haus. Unter „Räume“ hat jeder Raum eine Seite mit Zuweisung des Zeitplans, Wochenraster, Stufen und Vorlaufzeit. Unter „Haus“ stehen Hausbetriebsart, Urlaub, Abwesend und die globalen Temperaturen. Eine eigene Liste aller Zeitpläne gibt es nicht. Die Heizzeitpläne liegen damit gesammelt unter „Räume“ (User Story 13).
       - Wochenraster als Mini-Leiste pro Tag, bearbeitet wird ein Tag als Zeitleiste mit Ziehgriffen. Blöcke und Tage lassen sich auf andere Tage kopieren.
-      - „gilt für“ erscheint nur bei Zeitplänen mit mehreren Räumen, zusammen mit „Für einen Raum abtrennen“. Das Panel zeigt nur Zeitpläne, die einem Raum zugewiesen sind.
-      - Antippen in der Übersicht beendet ohne Nachfrage, mit 6 Sekunden „Rückgängig“.
+      - „gilt auch für …“ erscheint nur, wenn der Zeitplan des Raums mehrere Räume hat, zusammen mit „Für <Raum> abtrennen“.
+      - Antippen in der Übersicht beendet ohne Nachfrage, mit 6 Sekunden „Rückgängig“. Ein Tipp auf einen Raum in Auto öffnet seine Raumseite.
       - Urlaub wird erst nach Wahl des Endes gestartet.
-      - Die Aufteilung in Reiter ist noch offen.
 
 ### Grundsatzentscheidungen
 

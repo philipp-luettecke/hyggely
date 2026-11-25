@@ -2,13 +2,14 @@
 
 Spec: `.scratch/heating-control/spec.md`
 
-**What to build:** Die Integration registriert in der Seitenleiste den Eintrag „Heizung“, der nur für Admins sichtbar ist, und liefert das Heating Panel als JavaScript-Modul aus. Das Panel zeigt für das Handy optimiert alle Räume mit Ist-Temperatur, Solltemperatur, Modus und Grund und aktualisiert sich live. Antippen einer laufenden Übersteuerung oder von Aus setzt den Raum auf Auto zurück: ohne Nachfrage, mit 6 Sekunden „Rückgängig“. Das Panel sendet das Beenden erst nach Ablauf dieser 6 Sekunden, beim Verlassen des Panels sofort. Ein Tipp auf einen Raum in Auto bewirkt in diesem Ticket nichts (Sprung zum Zeitplan in Ticket 18). Während der Vorlaufzeit nennt der Grund das Vorheizen („Vorheizen auf Komfort, Beginn 16:30“) statt „Komfort bis 22:00“. Das Panel spricht nur mit der Panel API der Integration und enthält keine Heizlogik. Interne `ha-*`-Komponenten des Frontends setzt es nicht voraus. Gestaltung laut Rückmeldung aus Ticket 16.
+**What to build:** Die Integration registriert in der Seitenleiste den Eintrag „Heizung“, der nur für Admins sichtbar ist, und liefert das Heating Panel als JavaScript-Modul aus. Das Panel hat drei Reiter: Übersicht, Räume und Haus; dieses Ticket füllt die Übersicht, die Tickets 18 und 19 die Raumseite unter „Räume“, Ticket 20 den Reiter „Haus“. Die Übersicht zeigt für das Handy optimiert alle Räume mit Ist-Temperatur, Solltemperatur, Modus und Grund und aktualisiert sich live. Antippen einer laufenden Übersteuerung oder von Aus setzt den Raum auf Auto zurück: ohne Nachfrage, mit 6 Sekunden „Rückgängig“. Das Panel sendet das Beenden erst nach Ablauf dieser 6 Sekunden, beim Verlassen des Panels sofort. Ein Tipp auf einen Raum in Auto bewirkt in diesem Ticket nichts (Sprung auf die Raumseite in Ticket 18). Während der Vorlaufzeit nennt der Grund das Vorheizen („Vorheizen auf Komfort, Beginn 16:30“) statt „Komfort bis 22:00“. Das Panel spricht nur mit der Panel API der Integration und enthält keine Heizlogik. Interne `ha-*`-Komponenten des Frontends setzt es nicht voraus. Gestaltung laut Rückmeldung aus Ticket 16.
 
 **Blocked by:** 05, 06, 16
 
 **Status:** ready-for-agent
 
 - [ ] Der Seitenleisten-Eintrag „Heizung“ erscheint nach dem Einrichten der Integration nur für Admins
+- [ ] Das Panel hat die Reiter Übersicht, Räume und Haus
 - [ ] Die Panel API liefert eine Raumübersicht und meldet Änderungen per Abonnement. Für Nicht-Admins ist sie gesperrt
 - [ ] Das Panel zeigt alle Räume mit Ist, Soll, Modus und Grund und aktualisiert sich ohne Neuladen
 - [ ] Antippen beendet Übersteuerung oder Aus über die Panel API, ohne Nachfrage
@@ -20,4 +21,4 @@ Spec: `.scratch/heating-control/spec.md`
 
 ## Comments
 
-**Rückmeldung aus Ticket 16 (25.11.2026):** Fragen 4 und 8. Die Reiter (vier wie im Prototyp oder drei: Übersicht, Räume, Haus) sind noch offen (Ticket 16, Frage 12); das Gerüst legt die Reiter laut dieser Entscheidung an.
+**Rückmeldung aus Ticket 16 (25.11.2026):** Fragen 4, 8 und 12 (drei Reiter, Vorbild ist die Aufteilung „3R“ im Prototyp auf `prototype/15-panel`).
