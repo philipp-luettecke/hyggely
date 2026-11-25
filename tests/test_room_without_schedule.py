@@ -15,6 +15,7 @@ from tests.scenario import (
     add_main_entry,
     add_room,
     block,
+    change_global_settings,
     change_room,
     commands,
     living_room,
@@ -164,6 +165,61 @@ async def test_heat_without_temperature_in_a_room_without_schedule_keeps_eco(
     room = _state(hass, room_entity_id(hass, subentry))
     assert room.state == "heat"
     assert room.attributes["temperature"] == 17.0
+
+
+async def test_room_off_without_schedule_returns_to_auto_after_the_duration(
+    hass: HomeAssistant,
+    clock: Clock,
+    simulated_trvs: SimulatedTrvs,
+) -> None:
+    """Without block boundary off ends after the override duration, 3 hours."""
+    await hass.config.async_update(language="de")
+    clock.set("2026-11-16 08:00")
+    subentry, trv = await _room_without_schedule(hass, simulated_trvs)
+
+    await _call(hass, subentry, "set_hvac_mode", hvac_mode="off")
+
+    assert _state(hass, reason_entity_id(hass, subentry)).state == "Aus bis 11:00"
+
+    await clock.advance_to("2026-11-16 11:00:00")
+
+    assert _state(hass, room_entity_id(hass, subentry)).state == "auto"
+    assert commands(trv)[-1] == HEAT_17
+
+
+async def test_override_with_next_block_rule_ends_after_the_duration_without_schedule(
+    hass: HomeAssistant,
+    clock: Clock,
+    simulated_trvs: SimulatedTrvs,
+) -> None:
+    """The rule next block boundary falls back to the duration without one."""
+    clock.set("2026-11-16 08:00")
+    subentry, trv = await _room_without_schedule(hass, simulated_trvs)
+    [entry] = hass.config_entries.async_entries("climate_control")
+    await change_global_settings(hass, entry, override_expiry_policy="next_block")
+
+    await _call(hass, subentry, "set_temperature", temperature=21)
+    await clock.advance_to("2026-11-16 11:00:00")
+
+    assert _state(hass, room_entity_id(hass, subentry)).state == "auto"
+    assert commands(trv)[-1] == HEAT_17
+
+
+async def test_room_off_with_a_schedule_without_blocks_returns_after_the_duration(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+) -> None:
+    """A schedule without blocks has no block boundary either."""
+    clock.set("2026-11-16 08:00")
+    room = await living_room(hass, schedules, simulated_trvs, monday=[])
+
+    await room.call(hass, "set_hvac_mode", hvac_mode="off")
+    await clock.advance_to("2026-11-16 11:00:00")
+
+    assert room.state(hass).state == "auto"
+    assert commands(room.trv)[-1] == HEAT_17
 
 
 async def test_schedule_assigned_in_the_room_options_applies_at_once(

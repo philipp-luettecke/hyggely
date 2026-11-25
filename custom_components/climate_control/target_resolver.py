@@ -166,13 +166,16 @@ def override_expiry_for(
     """Return the override expiry of a room mode chosen at `now` (None: never).
 
     Off always returns at the next block boundary; heat follows the override
-    expiry rule.
+    expiry rule. Without a next block boundary both end after the duration of
+    the rule, so no room stays off or overridden for good.
     """
     if room_mode is RoomMode.AUTO:
         return None
+    after_duration = now + rule.duration
+    if next_block_boundary is None:
+        return after_duration
     if room_mode is RoomMode.OFF or rule.policy is OverrideExpiryPolicy.NEXT_BLOCK:
         return next_block_boundary
-    after_duration = now + rule.duration
     if rule.policy is OverrideExpiryPolicy.DURATION:
         return after_duration
     return _earliest(next_block_boundary, after_duration)
