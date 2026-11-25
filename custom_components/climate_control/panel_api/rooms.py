@@ -14,13 +14,15 @@ import probatio
 from ..const import SIGNAL_ROOMS_CHANGED
 from ..reason_text import async_load_reason_texts, reason_text
 from ..room_controller import RoomController
-from .common import loaded_runtime_data
+from ..target_resolver import RoomMode
+from .common import loaded_runtime_data, room_controller_or_error
 
 
 @callback
 def async_register_commands(hass: HomeAssistant) -> None:
     """Register the commands of the room overview."""
     websocket_api.async_register_command(hass, _subscribe_rooms)
+    websocket_api.async_register_command(hass, _return_to_auto)
 
 
 @websocket_api.websocket_command(
@@ -48,6 +50,24 @@ async def _subscribe_rooms(
     )
     connection.send_result(msg["id"])
     _send_rooms()
+
+
+@websocket_api.websocket_command(
+    {
+        probatio.Required("type"): "climate_control/room/return_to_auto",
+        probatio.Required("room_id"): str,
+    }
+)
+@websocket_api.require_admin
+@websocket_api.async_response
+async def _return_to_auto(
+    hass: HomeAssistant, connection: ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """End the override or off of a room: it follows its schedule again."""
+    if (controller := room_controller_or_error(hass, connection, msg)) is None:
+        return
+    await controller.async_set_room_mode(RoomMode.AUTO)
+    connection.send_result(msg["id"])
 
 
 @callback

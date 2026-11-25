@@ -165,3 +165,80 @@ async def test_room_overview_is_refused_to_other_users(
 
     assert not response["success"]
     assert response["error"]["code"] == "unauthorized"
+
+async def test_return_to_auto_ends_an_override(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+) -> None:
+    """Ending the override from the panel brings back comfort until 09:00."""
+    admin = await hass_ws_client(hass)
+    clock.set("2026-11-16 08:00")
+    room = await living_room(hass, schedules, simulated_trvs)
+    await room.call(hass, "set_temperature", temperature=23)
+
+    response = await _return_to_auto(admin, room.subentry.subentry_id)
+
+    assert response["success"], response
+    assert room.state(hass).state == "auto"
+    assert room.state(hass).attributes["temperature"] == 21.0
+    assert room.reason(hass).attributes["reason_code"] == "comfort"
+
+
+async def test_return_to_auto_ends_room_off(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+) -> None:
+    """A room switched off follows its schedule again."""
+    admin = await hass_ws_client(hass)
+    clock.set("2026-11-16 08:00")
+    room = await living_room(hass, schedules, simulated_trvs)
+    await room.call(hass, "set_hvac_mode", hvac_mode="off")
+
+    await _return_to_auto(admin, room.subentry.subentry_id)
+
+    assert room.state(hass).state == "auto"
+    assert room.state(hass).attributes["temperature"] == 21.0
+
+
+async def test_return_to_auto_of_an_unknown_room_fails(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+) -> None:
+    """A room removed meanwhile is reported as not found."""
+    admin = await hass_ws_client(hass)
+    clock.set("2026-11-16 08:00")
+    await living_room(hass, schedules, simulated_trvs)
+
+    response = await _return_to_auto(admin, "no-such-room")
+
+    assert not response["success"]
+    assert response["error"]["code"] == "room_not_found"
+
+
+async def test_return_to_auto_is_refused_to_other_users(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    hass_read_only_access_token: str,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+) -> None:
+    """A user without admin rights cannot end an override from the panel."""
+    user = await hass_ws_client(hass, hass_read_only_access_token)
+    clock.set("2026-11-16 08:00")
+    room = await living_room(hass, schedules, simulated_trvs)
+    await room.call(hass, "set_temperature", temperature=23)
+
+    response = await _return_to_auto(user, room.subentry.subentry_id)
+
+    assert response["error"]["code"] == "unauthorized"
+    assert room.state(hass).state == "heat"
