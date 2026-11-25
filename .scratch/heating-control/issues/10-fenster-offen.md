@@ -6,7 +6,7 @@ Spec: `.scratch/heating-control/spec.md`
 
 **Blocked by:** 06
 
-**Status:** needs-info
+**Status:** done
 
 - [ ] Im Einrichtungs- und Optionsdialog eines Raums lassen sich null oder mehr Fensterkontakte wählen
 - [ ] Ein Kontakt, der kürzer als die Verzögerung offen ist, ändert nichts
@@ -47,3 +47,5 @@ Empfehlung: Option 2, weil sie Klartext und ruhiges Logbuch verbindet. Bitte ent
 **Entschieden (Nutzer, 18.11.2026):** Option 2. Der Grund zeigt die Uhrzeit des Öffnens („Fenster offen seit 14:03“) statt einer minütlich steigenden Dauer. Spec und Glossar angepasst.
 
 **Umsetzung Option 2:** Übersetzung `window_open_since` hat jetzt den Platzhalter `{since}` („Fenster offen seit 14:03“, englisch „Window open since 14:03“), Zeit in der Zeitzone von Home Assistant, Format HH:MM. Ist das Fenster seit einem früheren Kalendertag offen, steht das Datum dabei („Fenster offen seit 16.11. 23:50“, englisch „Window open since 2026-11-16 23:50“, wie bei `until`). Die minütliche Aktualisierung des Grund-Sensors ist entfernt; stattdessen aktualisiert er sich genau einmal, um Mitternacht nach dem Öffnen, damit das Datum erscheint (einfachste Lösung, die die Uhrzeit nie mehrdeutig lässt; ein Logbuch-Eintrag pro Mitternacht). Der Logbuch-Text des Sollwerts nutzt denselben Text („7 °C (Fenster offen seit 08:03)“). Grund-Code `window_open` und Attribut `since` unverändert. Tests: `tests/test_window_open.py` (Uhrzeit des Öffnens, kein neuer Zustand bei 10 min weiterem Lüften, Datum nach Mitternacht), `tests/test_reason.py` (englisch, mit Datum), `tests/test_logbook.py` (Sollwert-Eintrag mit Öffnungszeit).
+
+**Abgeschlossen:** Merge-Commit `e287727` auf `feat/heating-control`. Ergebnis: Fenster offen ab Verzögerung mit Frostschutz und Vorrang vor allem, Grund mit Öffnungszeit ohne Logbuch-Rauschen; 204 Tests grün.
