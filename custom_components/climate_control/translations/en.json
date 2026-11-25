@@ -193,7 +193,9 @@
           "away": "Away",
           "vacation": "Vacation",
           "vacation_until": "Vacation until {until}",
-          "house_off": "House off"
+          "house_off": "House off",
+          "preheat": "Preheating to {level}",
+          "preheat_start": "Preheating to {level}, starts {start}"
         },
         "state_attributes": {
           "reason_code": {
@@ -204,6 +206,12 @@
           },
           "since": {
             "name": "Since"
+          },
+          "level": {
+            "name": "Level"
+          },
+          "start": {
+            "name": "Start"
           }
         }
       }

@@ -5,7 +5,7 @@
   "categories": ["climate.thermostats_heating"],
   "codeowners": [],
   "config_flow": true,
-  "dependencies": [],
+  "dependencies": ["frontend", "http", "panel_custom", "websocket_api"],
   "documentation": "https://github.com/luetteck/climate-control",
   "integration_type": "service",
   "iot_class": "calculated",
