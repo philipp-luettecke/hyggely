@@ -6,6 +6,7 @@ import { LitElement, css, html, nothing, type PropertyDeclarations } from "lit";
 import { returnToAuto, type RoomMode, type RoomOverview } from "../api/rooms";
 import "../house/house-status";
 import { errorMessage, format, formatTemperature, localize } from "../i18n";
+import { navigate } from "../navigation";
 import { sharedStyles } from "../styles";
 import type { HomeAssistant } from "../types";
 import { defineOnce } from "../define";
@@ -155,8 +156,11 @@ export class OverviewTab extends LitElement {
   }
 
   private _tap(room: RoomOverview): void {
-    // A room in auto opens its room page (ticket 18).
-    if (room.room_mode === "auto" || this._pending?.roomId === room.room_id) {
+    if (this._pending?.roomId === room.room_id) {
+      return;
+    }
+    if (room.room_mode === "auto") {
+      navigate(this, "rooms", room.room_id);
       return;
     }
     this._sendPending();
