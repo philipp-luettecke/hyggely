@@ -56,7 +56,7 @@ CHANGED_SETTINGS = {
     "notify_targets": ["notify.anna_phone", "notify.ben_phone"],
     "quiet_start": "21:30:00",
     "quiet_end": "06:30:00",
-    "away_temperature": 16.5,
+    "away_temperature": 16.0,
     "vacation_temperature": 14.0,
     "frost_temperature": 6.0,
     "override_expiry_policy": "next_block",

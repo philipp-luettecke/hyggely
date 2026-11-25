@@ -71,4 +71,4 @@ DEFAULT_LEAD_TIME: Final = {"hours": 0, "minutes": 0, "seconds": 0}
 
 TRV_MIN_TEMPERATURE: Final = 5.0
 TRV_MAX_TEMPERATURE: Final = 25.0
-TEMPERATURE_STEP: Final = 0.5
+TEMPERATURE_STEP: Final = 1.0
