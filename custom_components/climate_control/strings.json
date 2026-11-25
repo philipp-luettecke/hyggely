@@ -228,6 +228,24 @@
   "exceptions": {
     "vacation_end_not_ahead": {
       "message": "Vacation needs a vacation end in the future. Set the vacation end first."
+    },
+    "vacation_end_must_be_ahead": {
+      "message": "The vacation end must be in the future."
+    },
+    "not_loaded": {
+      "message": "Heating control is not running. Check the integration under Settings > Devices & services."
+    }
+  },
+  "services": {
+    "start_vacation": {
+      "name": "Start vacation",
+      "description": "Sets the vacation end and switches the house mode to vacation. All rooms get the vacation temperature until the end, then the house returns to automatic.",
+      "fields": {
+        "end": {
+          "name": "End",
+          "description": "When the vacation ends. Must be in the future."
+        }
+      }
     }
   },
   "common": {

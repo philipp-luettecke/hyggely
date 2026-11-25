@@ -8,7 +8,8 @@ from datetime import timedelta
 from homeassistant.config_entries import ConfigEntry, ConfigSubentry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import config_validation as cv, device_registry as dr
+from homeassistant.helpers.typing import ConfigType
 
 from .command_pacer import CommandPacer
 from .const import (
@@ -24,6 +25,9 @@ from .presence import Presence
 from .repair_issues import async_track_offline_trvs
 from .room_controller import RoomController
 from .room_mode_store import RoomModeStore, async_remove_room_modes
+from .services import async_setup_services
+
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 PLATFORMS = [
     Platform.BINARY_SENSOR,
@@ -45,6 +49,12 @@ class RuntimeData:
 
 
 type ClimateControlConfigEntry = ConfigEntry[RuntimeData]
+
+
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    """Register the services, also while the main entry is not loaded."""
+    async_setup_services(hass)
+    return True
 
 
 async def async_setup_entry(
