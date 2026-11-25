@@ -4,6 +4,7 @@ from typing import Any
 
 from homeassistant.config_entries import SOURCE_RECONFIGURE, SOURCE_USER
 from homeassistant.core import HomeAssistant
+from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import config_validation as cv
 import probatio
 
@@ -13,11 +14,12 @@ from tests.simulated_trv import SimulatedTrvs
 DOMAIN = "climate_control"
 
 
-def _steps(form: dict[str, Any], *fields: str) -> dict[str, Any]:
+def _steps(form: FlowResult[Any, Any], *fields: str) -> dict[str, Any]:
     """Return the step of number fields as the dialog in the frontend gets it."""
     serialized = probatio.to_field_list(
         form["data_schema"], custom_serializer=cv.custom_serializer
     )
+    assert isinstance(serialized, list)
     return {
         field["name"]: field["selector"]["number"]["step"]
         for field in serialized
