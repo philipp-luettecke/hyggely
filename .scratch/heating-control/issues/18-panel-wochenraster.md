@@ -12,7 +12,7 @@ Damit ein neuer Raum ohne vorher angelegten Helfer eingerichtet werden kann, wir
 
 **Blocked by:** 04, 17
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Der Reiter „Räume“ zeigt Raum-Chips. Die Raumseite enthält Zuweisung und Zeitplan des gewählten Raums
 - [ ] Die Wochenübersicht zeigt alle Blöcke des Zeitplans als Mini-Leiste pro Tag mit Stufenfarben, ein gewählter Tag erscheint als Zeitleiste
@@ -45,16 +45,20 @@ Damit ein neuer Raum ohne vorher angelegten Helfer eingerichtet werden kann, wir
 - C: Ohne Schaltpunkt enden Aus und Übersteuerung um Mitternacht.
 Empfehlung: B, passend zu „im Zweifel eher warm als kalt“; nicht umgesetzt, bis der Admin entscheidet.
 
-**Teil vorgezogen (Branch `ticket/18-no-schedule`):** Nur die Integrationsteile ohne Panel, nach Freigabe durch den Admin (Handover, Abschnitt „Optional“).
-- Umgesetzt: Der Zeitplan ist im Einrichtungs- und Optionsdialog des Raums optional (`CONF_SCHEDULE` ist `Optional`); im Optionsdialog lässt er sich entfernen und nachträglich zuweisen. Ohne Zeitplan, oder wenn der Helfer fehlt oder nicht verfügbar ist, liefert `ScheduleReader.read()` nicht mehr `None`, sondern Eco ohne Schaltpunkt mit `ScheduleLevel.missing`; der Target Resolver entscheidet dann Eco mit dem neuen Grund-Code `no_schedule` („Kein Zeitplan – Eco“ / „No schedule – Eco“). `RoomController._async_evaluate` bricht nicht mehr ab, Fenster offen, Aus, Übersteuerung, Hausbetriebsart und Abwesend wirken weiter. Dialogtexte für Zeitplan und Eco-Temperatur nennen das Verhalten.
-- Tests: `tests/test_room_without_schedule.py` (Raum ohne Zeitplan, gelöschter Helfer, Fenster offen, Übersteuerung mit Rückfall nach 3 h, Heizen ohne Temperatur, Zeitplan im Optionsdialog zuweisen und entfernen); `no_schedule` in der Übersetzungsprüfung von `tests/test_reason.py`; der Diagnose-Export zeigt `missing` im Zeitplan-Schnappschuss.
-- Hinweis für den Merge mit Ticket 17 (`preheat`): Konflikte erwartet in `target_resolver.py` (`ReasonCode`, `ScheduleLevel`, `_schedule_level`), `schedule_reader.py` (`read()`), `room_controller.py` und bei den Grund-Texten der Übersetzungen. Ein Raum ohne Zeitplan heizt nie vor.
-- Offen für das Panel-Ticket 18: Raum-Chips, Raumseite mit Zuweisung, Wochenraster und Zeitleiste, Kopieren, Abtrennen, Löschen, Anlegen eines Helfers, Befehl der Panel API zum Zuweisen samt Tests, „hält Eco“ und „Zeitplan anlegen“ auf der Raumseite, Abnahme per Checkliste.
-
-**Offene Frage (vorgezogener Teil): Aus und Übersteuerung in einem Raum ohne Zeitplan.** Ohne Zeitplan gibt es keinen Schaltpunkt. Heute heißt das: Aus gilt, bis jemand Auto wählt (Grund „Aus“ ohne Zeit), und eine Übersteuerung mit Rückfallregel `next_block` endet nie; mit `earliest` (Standard) und `duration` endet sie nach der Dauer. Dasselbe gilt schon bisher für einen Zeitplan ganz ohne Blöcke. Optionen:
-- A: So lassen. Ein Raum ohne Zeitplan ist ein Übergangszustand bis zur Zuweisung im Panel; ein ungenutzter Raum kann bewusst auf Aus bleiben.
-- B: Ohne Schaltpunkt enden Aus und Übersteuerung nach der Rückfall-Dauer des Raums (Standard 3 h). Kein Raum bleibt versehentlich tagelang kalt (User Story 9), dafür lässt sich ein ungenutzter Raum ohne Zeitplan nicht dauerhaft ausschalten.
-- C: Ohne Schaltpunkt enden Aus und Übersteuerung um Mitternacht.
-Empfehlung: B, passend zu „im Zweifel eher warm als kalt“; nicht umgesetzt, bis der Admin entscheidet.
-
 **Entscheidung Admin (25.11.2026):** Option B. In einem Raum ohne Schaltpunkt (kein Zeitplan, fehlender oder nicht verfügbarer Helfer, oder Zeitplan ohne Blöcke) enden Aus und Übersteuerung nach der Rückfall-Dauer des Raums (Standard 3 h), auch bei der Rückfallregel `next_block`. Umgesetzt in `override_expiry_for` (`target_resolver.py`); der Grund zeigt dann z. B. „Aus bis 11:00“. Tests in `tests/test_room_without_schedule.py`: Aus ohne Zeitplan, Übersteuerung mit `next_block` ohne Zeitplan, Aus bei einem Zeitplan ohne Blöcke. Der Rückfallzeitpunkt wird beim Wählen festgelegt; bekommt der Raum danach einen Schaltpunkt, bleibt er bestehen. Spec (Grundsatzentscheidung „Rückfall“) und Glossar („Override expiry“: „`off` always returns at the next block boundary“) nennen diese Ausnahme noch nicht.
+
+**Abgeschlossen:** Merge-Commit `a29ffeb` auf `feat/heating-control`. Ergebnis: Zeitplan optional, ohne Zeitplan bzw. bei fehlendem Helfer Eco mit `no_schedule`; ohne Schaltpunkt enden Aus und Übersteuerung nach der Rückfall-Dauer (Spec und Glossar ergänzt). Panel API `climate_control/schedules/subscribe` (Zuweisungen und alle Zeitplan-Helfer samt Id für die nativen Befehle) und `climate_control/room/assign_schedule` (per `entity_id` oder per Id aus `schedule/create`, `null` für keinen), Tests in `tests/test_panel_api_schedules.py`. Zeitpläne liest, schreibt und löscht das Panel nur über `schedule/list|create|update|delete`; die Stufe steht als `level` in den Zusatzdaten jedes Blocks, übrige Zusatzdaten bleiben erhalten. Raumseite: Auswahl aller Helfer, „– kein Zeitplan –“, „+ Neuen Zeitplan anlegen …“; Legende; Wochenübersicht mit Mini-Leisten und Zeitleiste (Variante B, 40 px pro Stunde, 15-Minuten-Raster, Griffe oben/unten, Block verschieben, Stufe umschalten, löschen); jede Änderung wird sofort gespeichert, nacheinander pro Zeitplan, bei Fehler Meldung und Neuladen. Block kopieren nach (übersprungene Tage werden genannt), „Tag kopieren nach …“ mit Mo–Fr/Sa–So/Alle (ersetzt die Zieltage), Hinweise „geht weiter bis …“ / „seit …“ am Tagesrand. Geteilter Zeitplan: „gilt auch für …“, Hinweis auf N Räume, „Für <Raum> abtrennen“ (Anlegen mit vorgewählter Kopie). Anlegen mit Name „Heizung <Raum>“ (bei Dopplung mit Nummer), Vorlagen Standardwoche/Leer/Kopie von „…“, danach Zuweisung. Verliert ein Zeitplan durch Umzuweisen im Panel seinen letzten Raum, fragt das Panel einmal „Löschen / Behalten“. Ein Tipp auf einen Raum in Auto in der Übersicht öffnet seine Raumseite mit dem heutigen Tag. Frontend-Logik ohne Testrunner (keiner im Repo), die Wochenlogik (`schedule-week.ts`) per Wegwerf-Skript geprüft. 279 Tests grün. Die Abnahme auf dem Handy steht noch aus:
+- [ ] Raum-Chips wechseln den Raum, die Raumseite zeigt Zuweisung, Legende, Woche und den heutigen Tag
+- [ ] Leere Stelle antippen legt einen 60-Minuten-Komfortblock an; ist der Tag voll, erscheint „kein Platz mehr frei“
+- [ ] Block antippen, an den Griffen verlängern/kürzen und als Ganzes verschieben: rastet in 15 Minuten, stößt an Nachbarblöcke, die Seite scrollt dabei nicht mit
+- [ ] Stufe umschalten und Löschen wirken sofort; nach Neuladen der Seite sind alle Änderungen da
+- [ ] Block kopieren nach Mo–Fr: Tage mit Überschneidung werden genannt und bleiben unverändert
+- [ ] „Tag kopieren nach …“ ersetzt die Blöcke der Zieltage
+- [ ] Block 21:00–24:00 plus 00:00–06:00 am Folgetag: „geht weiter bis Di 06:00“ unten, „seit Mo 21:00“ oben
+- [ ] Neuer Zeitplan mit Standardwoche, Leer und Kopie; Name „Heizung <Raum>“ vorbelegt; Raum zeigt danach den neuen Zeitplan
+- [ ] Gleichen Zeitplan zwei Räumen zuweisen: „gilt auch für …“ und Hinweis erscheinen; „Für <Raum> abtrennen“ legt eine Kopie an und weist sie zu; danach verschwindet die Leiste
+- [ ] Letzten Raum eines Zeitplans umzuweisen fragt „Löschen / Behalten“; „Löschen“ entfernt den Helfer, „Behalten“ lässt ihn in der Auswahl
+- [ ] Raum ohne Zeitplan zeigt „hält Eco“ und „Zeitplan anlegen“; Grund „Kein Zeitplan – Eco“
+- [ ] Tipp auf einen Raum in Auto in der Übersicht öffnet seine Raumseite mit heute
+- [ ] Der im Panel bearbeitete Zeitplan lässt sich im Zeitplan-Editor von Home Assistant öffnen und bearbeiten; die Stufe bleibt dabei erhalten
+- [ ] Ein YAML-Zeitplan ist zuweisbar, die Raumseite zeigt statt der Zeitleiste den Hinweis, dass er hier nicht bearbeitbar ist
