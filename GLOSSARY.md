@@ -4,7 +4,7 @@ Code, tests and docs use the **Term**. The UI shows the **German label**.
 
 | Term | German label | Meaning |
 |---|---|---|
-| Room | Raum | A heated space. Owns one room climate entity, one or more TRVs, zero or more window contacts and exactly one schedule. |
+| Room | Raum | A heated space. Owns one room climate entity, one or more TRVs, zero or more window contacts and at most one schedule. Without a schedule, or if its helper is missing or unavailable, eco applies. |
 | Room entity | Raum-Thermostat | The `climate` entity this integration creates per room. The only thermostat users see in HA, Apple Home and Google. |
 | TRV | Heizkörperthermostat | A physical tado radiator thermostat, integrated locally via HomeKit Device as a `climate` entity. Never shown to users directly. |
 | Schedule | Zeitplan | A native HA `schedule` helper assigned to one or more rooms. |

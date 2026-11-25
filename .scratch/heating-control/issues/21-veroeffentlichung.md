@@ -12,7 +12,7 @@ Spec: `.scratch/heating-control/spec.md`
 
 **Status:** ready-for-agent
 
-- [ ] Die Installationsanleitung deckt Installation, Haupteintrag, Räume, Zeitpläne und Panel ab
+- [ ] Die Installationsanleitung deckt Installation, Haupteintrag, Räume, Zeitpläne und Panel ab, inklusive Raum ohne Zeitplan (hält Eco, Zeitplan im Panel anlegen) und des Service `climate_control.start_vacation`
 - [ ] Der Einrichtungsdialog eines Raums zeigt den Hinweis zur Freigabe an HomeKit-Bridge und Google
 - [ ] Die Anleitung beschreibt das Ausschließen der TRVs und das Freigeben der Raum-Thermostate in der HomeKit-Bridge
 - [ ] Die Anleitung beschreibt das Freigeben der Raum-Thermostate an Google Assistant ohne Nabu Casa

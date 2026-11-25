@@ -138,7 +138,7 @@ Fenster offen, Abwesenheit und Urlaub greifen automatisch. Benachrichtigungen gi
 - Raum-Einstellungen:
   - ein oder mehrere TRVs
   - null oder mehr Fensterkontakte
-  - ein Zeitplan-Helfer
+  - optional ein Zeitplan-Helfer. Ohne Zeitplan, oder wenn der Helfer fehlt oder nicht verfügbar ist, hält der Raum Eco (Grund „Kein Zeitplan – Eco“), alle übrigen Regeln wirken weiter (Ticket 16)
   - Temperaturen für Komfort, Nacht und Eco
   - Vorlaufzeit
   - optionale abweichende Rückfallregel
@@ -155,10 +155,11 @@ Fenster offen, Abwesenheit und Urlaub greifen automatisch. Benachrichtigungen gi
   - `set_hvac_mode(auto)` beendet Übersteuerung oder Aus.
   - `set_hvac_mode(off)` gilt bis zum nächsten Schaltpunkt.
   - `set_hvac_mode(heat)` ohne Temperatur übersteuert mit dem aktuellen Sollwert. Gilt gerade Frostschutz wegen Aus, Fenster offen oder Haus aus, übersteuert er stattdessen mit dem Sollwert, den der Raum ohne diesen Grund hätte (Ticket 07).
-- **Grund** (`sensor`) pro Raum: Klartext-Begründung, übersetzt, mit stabilem Grund-Code als Attribut für Automationen.
+- **Grund** (`sensor`) pro Raum: Klartext-Begründung, übersetzt, mit stabilem Grund-Code als Attribut für Automationen. Während der Vorlaufzeit nennt er das Vorheizen („Vorheizen auf Komfort, Beginn 16:30“, Code `preheat`), ohne Zeitplan „Kein Zeitplan – Eco“ (Code `no_schedule`).
 - **Hausbetriebsart** (`select`) global: `auto`, `vacation`, `off`.
 - **Urlaubsende** (`datetime`) global. Läuft es ab, wechselt die Hausbetriebsart auf `auto`.
 - **Abwesend** (`binary_sensor`) global, abgeleitet aus Anwesenheit und Verzögerung.
+- **Service `climate_control.start_vacation`** mit Pflichtfeld `end`: setzt Urlaubsende und Hausbetriebsart `vacation` in einem Schritt und lehnt ein Ende ab, das nicht in der Zukunft liegt (Ticket 20).
 - Alle eigenen Zustände (Übersteuerung samt Rückfall, Aus samt Rückfall, Hausbetriebsart, Urlaubsende) werden über einen Neustart wiederhergestellt.
 
 ### Module
@@ -181,6 +182,7 @@ Fenster offen, Abwesenheit und Urlaub greifen automatisch. Benachrichtigungen gi
    - Berechnet die wirksame Stufe unter Berücksichtigung der Vorlaufzeit. Beginnt ein Block innerhalb der Vorlaufzeit, gilt bereits seine Stufe, sofern sie im Raum wärmer ist als die bisherige. Vorgeheizt wird also, früher abgesenkt nie (Ticket 04).
    - Berechnet außerdem den nächsten Schaltpunkt.
    - Reagiert auf Änderungen am Helfer, etwa wenn er im Panel bearbeitet wird.
+   - Hat der Raum keinen Zeitplan, oder fehlt der Helfer bzw. ist er nicht verfügbar, gilt Eco ohne Schaltpunkt. Die Auswertung des Raums läuft trotzdem weiter.
 3. **Room Controller**: einer pro Raum.
    - Abonniert alle Eingaben und hält Übersteuerung und Rückfall.
    - Ruft den Target Resolver auf, plant Neubewertungen zum gelieferten Zeitpunkt und sendet Befehle an die TRVs.
@@ -214,9 +216,10 @@ Fenster offen, Abwesenheit und Urlaub greifen automatisch. Benachrichtigungen gi
    - Raumübersicht mit Status lesen und abonnieren.
    - Stufentemperaturen und Vorlaufzeit pro Raum ändern (schreibt in die Subentry-Optionen).
    - Zeitplan einem Raum zuweisen.
-   - Hausbetriebsart und Urlaubsende setzen.
+   - Hausbetriebsart und Urlaubsende setzen, Urlaub mit Ende in einem Befehl starten.
+   - Konfigurierte Personen mit Anwesenheitszustand lesen (für die Abwesend-Anzeige).
    - Übersteuerung eines Raums beenden.
-   - Zeitpläne selbst liest und schreibt das Panel über die nativen Websocket-Befehle des Zeitplan-Helfers (`schedule/list`, `schedule/create`, `schedule/update`). Diese sind nur für Admins erlaubt.
+   - Zeitpläne selbst liest, schreibt und löscht das Panel über die nativen Websocket-Befehle des Zeitplan-Helfers (`schedule/list`, `schedule/create`, `schedule/update`, `schedule/delete`). Diese sind nur für Admins erlaubt.
 10. **Heating Panel**: eigener Seitenleisten-Eintrag „Heizung“, nur für Admins, für das Handy ausgelegt, von der Integration als JavaScript-Modul ausgeliefert.
     - Inhalte in Version 1:
       - Raumübersicht mit Ist, Soll, Modus und Grund; Antippen beendet die Übersteuerung.
@@ -226,6 +229,12 @@ Fenster offen, Abwesenheit und Urlaub greifen automatisch. Benachrichtigungen gi
       - Zeitplan für einen Raum anlegen.
     - Das Panel enthält keine Heizlogik. Es spricht nur mit der Panel API und der nativen Zeitplan-Schnittstelle. Interne `ha-*`-Komponenten des Frontends werden nicht vorausgesetzt.
     - Vor dem Panel entsteht ein klickbarer Wegwerf-Prototyp mit Beispieldaten. Die Rückmeldung des Haushalts verfeinert die Panel-Tickets.
+    - Gestaltung laut Abnahme (Ticket 16):
+      - Wochenraster als Mini-Leiste pro Tag, bearbeitet wird ein Tag als Zeitleiste mit Ziehgriffen. Blöcke und Tage lassen sich auf andere Tage kopieren.
+      - „gilt für“ erscheint nur bei Zeitplänen mit mehreren Räumen, zusammen mit „Für einen Raum abtrennen“. Das Panel zeigt nur Zeitpläne, die einem Raum zugewiesen sind.
+      - Antippen in der Übersicht beendet ohne Nachfrage, mit 6 Sekunden „Rückgängig“.
+      - Urlaub wird erst nach Wahl des Endes gestartet.
+      - Die Aufteilung in Reiter ist noch offen.
 
 ### Grundsatzentscheidungen
 
@@ -279,7 +288,7 @@ Fenster offen, Abwesenheit und Urlaub greifen automatisch. Benachrichtigungen gi
   - Bei einem Ausfall der Bridge friert die `climate`-Entität ein, statt `unavailable` zu werden.
   
   Die Folgerungen stehen in den Modulen Room Controller und Override Detector sowie in den Tickets 08 und 13.
-- **Offen: Schrittweite.** Ob sich per Befehl halbe Grad setzen lassen, ist ungeprüft. Der Knopf arbeitet in 1-°C-Schritten. Bis zur Klärung gilt 0,5 °C.
+- **Schrittweite: 1 °C** (entschieden in Ticket 16), passend zum Knopf, der in 1-°C-Schritten arbeitet. Sie gilt im Panel, im Einrichtungs- und Optionsdialog und am Raum-Thermostat. Ob die TRVs per Befehl halbe Grad annehmen, spielt damit keine Rolle mehr.
 - **Das Panel wird nach dem ersten Sichten durch den Haushalt nachgeschärft.** Der Prototyp ist dafür ein eigener Abstimmungsschritt.
 - **Offen: Anzahl der Räume.** Sie ist nicht blockierend und dient nur der Abschätzung. Mehrere TRVs pro Raum werden unterstützt.
 - Die Test-Schnittstelle wird nach den ersten Tickets mit dem Admin noch einmal angeschaut.
