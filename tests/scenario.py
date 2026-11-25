@@ -254,12 +254,13 @@ async def living_room(
     trv_mode: str = "heat",
     trv_temperature: float = 15.0,
     current_temperature: float = 19.5,
+    night_temperature: float = 16.0,
     lead_minutes: int = 0,
     global_settings: dict[str, Any] | None = None,
     window_contacts: list[str] | None = None,
     **weekdays: list[dict[str, Any]],
 ) -> LivingRoom:
-    """Add the living room with comfort 21 °C, night 16 °C and eco 17 °C.
+    """Add the living room with comfort 21 °C, night 16 °C (unless given), eco 17 °C.
 
     Its schedule has the blocks given per weekday, by default one comfort block
     Monday 07:00-09:00.
@@ -283,7 +284,7 @@ async def living_room(
         schedule=schedule,
         area=area.id,
         comfort_temperature=21.0,
-        night_temperature=16.0,
+        night_temperature=night_temperature,
         eco_temperature=17.0,
         lead_minutes=lead_minutes,
         window_contacts=window_contacts,

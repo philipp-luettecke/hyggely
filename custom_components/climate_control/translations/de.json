@@ -101,7 +101,7 @@
             "comfort_temperature": "Solltemperatur während eines Blocks mit Stufe Komfort oder ohne Stufe.",
             "night_temperature": "Solltemperatur während eines Blocks mit Stufe Nacht.",
             "eco_temperature": "Solltemperatur außerhalb der Blöcke im Zeitplan.",
-            "lead_time": "So lange vor Beginn eines Blocks gilt bereits seine Stufe, damit der Raum rechtzeitig warm ist.",
+            "lead_time": "So lange vor Beginn eines Blocks gilt bereits seine Stufe, wenn sie wärmer ist, damit der Raum rechtzeitig warm ist. Früher abgesenkt wird nie.",
             "area": "Der Raum erscheint als Gerät in diesem Bereich.",
             "override_expiry_policy": "Wann eine manuelle Übersteuerung in diesem Raum zum Zeitplan zurückkehrt.",
             "override_expiry_duration": "Leer lassen, um die globale Dauer der Übersteuerung zu verwenden."
@@ -129,7 +129,7 @@
             "comfort_temperature": "Solltemperatur während eines Blocks mit Stufe Komfort oder ohne Stufe.",
             "night_temperature": "Solltemperatur während eines Blocks mit Stufe Nacht.",
             "eco_temperature": "Solltemperatur außerhalb der Blöcke im Zeitplan.",
-            "lead_time": "So lange vor Beginn eines Blocks gilt bereits seine Stufe, damit der Raum rechtzeitig warm ist.",
+            "lead_time": "So lange vor Beginn eines Blocks gilt bereits seine Stufe, wenn sie wärmer ist, damit der Raum rechtzeitig warm ist. Früher abgesenkt wird nie.",
             "area": "Der Raum erscheint als Gerät in diesem Bereich.",
             "override_expiry_policy": "Wann eine manuelle Übersteuerung in diesem Raum zum Zeitplan zurückkehrt.",
             "override_expiry_duration": "Leer lassen, um die globale Dauer der Übersteuerung zu verwenden."

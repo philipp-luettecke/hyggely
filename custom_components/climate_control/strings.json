@@ -101,7 +101,7 @@
             "comfort_temperature": "Target temperature during a block with level comfort or without a level.",
             "night_temperature": "Target temperature during a block with level night.",
             "eco_temperature": "Target temperature outside the blocks of the schedule.",
-            "lead_time": "The level of a block already applies this long before the block starts, so the room is warm in time.",
+            "lead_time": "A warmer level of a block already applies this long before the block starts, so the room is warm in time. It never lowers early.",
             "area": "The room appears as a device in this area.",
             "override_expiry_policy": "When a manual override in this room returns to the schedule.",
             "override_expiry_duration": "Leave empty to use the global override duration."
@@ -129,7 +129,7 @@
             "comfort_temperature": "Target temperature during a block with level comfort or without a level.",
             "night_temperature": "Target temperature during a block with level night.",
             "eco_temperature": "Target temperature outside the blocks of the schedule.",
-            "lead_time": "The level of a block already applies this long before the block starts, so the room is warm in time.",
+            "lead_time": "A warmer level of a block already applies this long before the block starts, so the room is warm in time. It never lowers early.",
             "area": "The room appears as a device in this area.",
             "override_expiry_policy": "When a manual override in this room returns to the schedule.",
             "override_expiry_duration": "Leave empty to use the global override duration."

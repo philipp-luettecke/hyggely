@@ -1,4 +1,4 @@
-"""Blocks carry a level; the lead time applies a block's level before it starts."""
+"""Blocks carry a level; the lead time applies a warmer level before it starts."""
 
 from homeassistant.core import HomeAssistant
 
@@ -140,6 +140,171 @@ async def test_lead_time_warms_up_at_the_end_of_a_night_block(
     assert commands(room.trv) == [HEAT_16, HEAT_21]
 
 
+async def test_lead_time_does_not_lower_early_into_a_colder_adjacent_block(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+) -> None:
+    """Comfort until 22:00 right before night stays comfort until 22:00."""
+    await hass.config.async_update(language="de")
+    clock.set("2026-11-16 21:00")
+    room = await living_room(
+        hass,
+        schedules,
+        simulated_trvs,
+        lead_minutes=30,
+        monday=[block("17:00", "22:00"), block("22:00", "24:00", "night")],
+    )
+    assert room.state(hass).attributes["next_block_boundary"] == local(
+        "2026-11-16 22:00"
+    )
+    assert room.reason(hass).state == "Komfort bis 22:00"
+
+    await clock.advance_to("2026-11-16 21:30:00")
+    await clock.advance_to("2026-11-16 21:59:59")
+    assert room.state(hass).attributes["temperature"] == 21.0
+    assert room.state(hass).attributes["level"] == "comfort"
+    assert commands(room.trv) == [HEAT_21]
+
+    await clock.advance_to("2026-11-16 22:00:00")
+    assert room.state(hass).attributes["level"] == "night"
+    assert commands(room.trv) == [HEAT_21, HEAT_16]
+
+
+async def test_room_off_before_a_colder_adjacent_block_lasts_until_its_start(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+) -> None:
+    """Off in the evening comfort returns at 22:00, not at the lead time before."""
+    clock.set("2026-11-16 21:00")
+    room = await living_room(
+        hass,
+        schedules,
+        simulated_trvs,
+        lead_minutes=30,
+        monday=[block("17:00", "22:00"), block("22:00", "24:00", "night")],
+    )
+
+    await room.call(hass, "set_hvac_mode", hvac_mode="off")
+
+    assert room.state(hass).attributes["override_expiry"] == local("2026-11-16 22:00")
+
+
+async def test_lead_time_preheats_a_night_block_warmer_than_eco(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+) -> None:
+    """With night at 18 °C above eco at 17 °C, night applies from 21:30."""
+    clock.set("2026-11-16 21:00")
+    room = await living_room(
+        hass,
+        schedules,
+        simulated_trvs,
+        night_temperature=18.0,
+        lead_minutes=30,
+        monday=[block("22:00", "24:00", "night")],
+    )
+    assert room.state(hass).attributes["next_block_boundary"] == local(
+        "2026-11-16 21:30"
+    )
+
+    await clock.advance_to("2026-11-16 21:30:00")
+    assert room.state(hass).attributes["temperature"] == 18.0
+    assert room.state(hass).attributes["level"] == "night"
+    assert room.state(hass).attributes["next_block_boundary"] == local(
+        "2026-11-17 00:00"
+    )
+
+
+async def test_lead_time_does_not_lower_early_into_a_night_block_colder_than_eco(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+) -> None:
+    """With night at 16 °C below eco at 17 °C, eco holds until the night starts."""
+    clock.set("2026-11-16 21:00")
+    room = await living_room(
+        hass,
+        schedules,
+        simulated_trvs,
+        lead_minutes=30,
+        monday=[block("22:00", "24:00", "night")],
+    )
+    assert room.state(hass).attributes["next_block_boundary"] == local(
+        "2026-11-16 22:00"
+    )
+
+    await clock.advance_to("2026-11-16 21:30:00")
+    assert room.state(hass).attributes["level"] == "eco"
+    assert commands(room.trv) == [HEAT_17]
+
+    await clock.advance_to("2026-11-16 22:00:00")
+    assert commands(room.trv) == [HEAT_17, HEAT_16]
+
+
+async def test_level_as_warm_as_the_one_before_switches_at_the_block_start(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+) -> None:
+    """Night at 17 °C like eco needs no lead time; the level changes at 22:00."""
+    clock.set("2026-11-16 21:00")
+    room = await living_room(
+        hass,
+        schedules,
+        simulated_trvs,
+        night_temperature=17.0,
+        lead_minutes=30,
+        monday=[block("22:00", "24:00", "night")],
+    )
+    assert room.state(hass).attributes["next_block_boundary"] == local(
+        "2026-11-16 22:00"
+    )
+
+    await clock.advance_to("2026-11-16 21:30:00")
+    assert room.state(hass).attributes["level"] == "eco"
+
+    await clock.advance_to("2026-11-16 22:00:00")
+    assert room.state(hass).attributes["level"] == "night"
+    assert commands(room.trv) == [HEAT_17]
+
+
+async def test_changed_level_temperatures_decide_anew_whether_to_preheat(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+) -> None:
+    """Night made warmer than eco applies within the lead time, eco made warmer not."""
+    clock.set("2026-11-16 21:40")
+    room = await living_room(
+        hass,
+        schedules,
+        simulated_trvs,
+        lead_minutes=30,
+        monday=[block("22:00", "24:00", "night")],
+    )
+    assert room.state(hass).attributes["level"] == "eco"
+
+    await change_room(hass, room.entry, room.subentry, night_temperature=18.0)
+    assert room.state(hass).attributes["level"] == "night"
+    assert room.state(hass).attributes["temperature"] == 18.0
+
+    await change_room(hass, room.entry, room.subentry, eco_temperature=19.0)
+    assert room.state(hass).attributes["level"] == "eco"
+    assert room.state(hass).attributes["temperature"] == 19.0
+    assert room.state(hass).attributes["next_block_boundary"] == local(
+        "2026-11-16 22:00"
+    )
+
+
 async def test_block_starting_at_midnight_starts_its_lead_time_the_evening_before(
     hass: HomeAssistant,
     clock: Clock,
@@ -204,7 +369,10 @@ async def test_week_wraps_from_sunday_night_to_monday_morning(
     schedules: Schedules,
     simulated_trvs: SimulatedTrvs,
 ) -> None:
-    """Sunday's night runs into Monday; Monday's comfort starts with lead time."""
+    """Sunday's night runs into Monday; Monday's comfort starts with lead time.
+
+    Night is colder than eco here, so Sunday's night starts without lead time.
+    """
     clock.set("2026-11-22 23:00")
     room = await living_room(
         hass,
@@ -227,7 +395,7 @@ async def test_week_wraps_from_sunday_night_to_monday_morning(
 
     await clock.advance_to("2026-11-23 08:00:00")
     assert room.state(hass).attributes["next_block_boundary"] == local(
-        "2026-11-29 21:30"
+        "2026-11-29 22:00"
     )
 
 
@@ -262,13 +430,16 @@ async def test_next_block_boundary_follows_a_schedule_change(
     )
 
 
-async def test_changed_level_of_a_future_block_applies_at_its_lead_time(
+async def test_changed_level_of_a_future_block_applies_at_its_start(
     hass: HomeAssistant,
     clock: Clock,
     schedules: Schedules,
     simulated_trvs: SimulatedTrvs,
 ) -> None:
-    """Making tomorrow's block night counts, although the helper looks unchanged."""
+    """Making tomorrow's block night counts, although the helper looks unchanged.
+
+    Night is colder than eco, so it does not start at the lead time but at 07:00.
+    """
     clock.set("2026-11-16 12:00")
     room = await living_room(
         hass,
@@ -286,7 +457,9 @@ async def test_changed_level_of_a_future_block_applies_at_its_lead_time(
         tuesday=[block("07:00", "09:00", "night")],
     )
     await clock.advance_to("2026-11-17 06:30:00")
+    assert commands(room.trv) == [HEAT_17]
 
+    await clock.advance_to("2026-11-17 07:00:00")
     assert room.state(hass).attributes["temperature"] == 16.0
     assert commands(room.trv) == [HEAT_17, HEAT_16]
 
