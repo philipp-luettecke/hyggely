@@ -14,6 +14,7 @@ from tests.scenario import (
     LivingRoom,
     Persons,
     Schedules,
+    WindowContact,
     block,
     change_global_settings,
     living_room,
@@ -200,6 +201,28 @@ async def test_reason_explains_a_room_switched_off(
     assert room.reason(hass).attributes["reason_code"] == "room_off"
 
 
+async def test_reason_explains_an_open_window_in_english(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+) -> None:
+    """Window open since 23:50, after midnight with the date of Monday."""
+    await _speak(hass, "en")
+    clock.set("2026-11-16 23:50")
+    window = WindowContact(hass, "fenster_wohnzimmer")
+    room = await living_room(
+        hass, schedules, simulated_trvs, window_contacts=[window.entity_id]
+    )
+    await window.open()
+
+    await clock.advance_to("2026-11-16 23:51:00")
+    assert room.reason(hass).state == "Window open since 23:50"
+
+    await clock.advance_to("2026-11-17 00:00:00")
+    assert room.reason(hass).state == "Window open since 2026-11-16 23:50"
+
+
 REASON_CODES = [
     "comfort",
     "night",
@@ -225,4 +248,4 @@ async def test_every_reason_code_has_a_text_in_the_language(
     assert all(texts.get(f"{prefix}.{code}") for code in REASON_CODES)
     for code in ("comfort", "night", "eco", "override", "room_off", "vacation"):
         assert "{until}" in texts[f"{prefix}.{code}_until"]
-    assert "{minutes}" in texts[f"{prefix}.window_open_since"]
+    assert "{since}" in texts[f"{prefix}.window_open_since"]

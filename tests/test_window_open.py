@@ -262,27 +262,68 @@ async def test_unreachable_window_contact_counts_as_closed(
     assert commands(room.trv) == [HEAT_21, FROST, HEAT_21]
 
 
-async def test_reason_counts_the_minutes_the_window_is_open(
+async def test_reason_shows_the_time_the_window_was_opened(
     hass: HomeAssistant,
     clock: Clock,
     schedules: Schedules,
     simulated_trvs: SimulatedTrvs,
 ) -> None:
-    """The reason reads window open for 1 min, then counts up every minute."""
+    """Opened at 08:03:40, the reason reads window open since 08:03."""
+    await hass.config.async_update(language="de")
+    clock.set("2026-11-16 08:00")
+    room, window = await _living_room_with_window(hass, schedules, simulated_trvs)
+    await clock.advance_to("2026-11-16 08:03:40")
+    await window.open()
+
+    await clock.advance_to("2026-11-16 08:04:40")
+
+    assert room.reason(hass).state == "Fenster offen seit 08:03"
+    assert room.reason(hass).attributes["since"] == local("2026-11-16 08:03:40")
+
+
+async def test_reason_stays_the_same_while_the_window_stays_open(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+) -> None:
+    """Airing for 10 more minutes writes no new reason, so the logbook stays quiet."""
     await hass.config.async_update(language="de")
     clock.set("2026-11-16 08:00")
     room, window = await _living_room_with_window(hass, schedules, simulated_trvs)
     await window.open()
-
     await clock.advance_to("2026-11-16 08:01:00")
-    assert room.reason(hass).state == "Fenster offen seit 1 min"
-    assert room.reason(hass).attributes["since"] == local("2026-11-16 08:00")
+    reason_at_frost = room.reason(hass)
 
-    await clock.advance_to("2026-11-16 08:02:00")
-    assert room.reason(hass).state == "Fenster offen seit 2 min"
+    for minute in range(2, 12):
+        await clock.advance_to(f"2026-11-16 08:{minute:02}:00")
 
-    await clock.advance_to("2026-11-16 08:04:30")
-    assert room.reason(hass).state == "Fenster offen seit 4 min"
+    assert room.reason(hass).state == "Fenster offen seit 08:00"
+    assert room.reason(hass).last_updated == reason_at_frost.last_updated
+
+
+async def test_reason_of_a_window_open_since_yesterday_shows_the_date(
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+) -> None:
+    """Window open from Monday 23:50: after midnight the reason names the day."""
+    await hass.config.async_update(language="de")
+    clock.set("2026-11-16 23:40")
+    room, window = await _living_room_with_window(hass, schedules, simulated_trvs)
+    await clock.advance_to("2026-11-16 23:50:00")
+    await window.open()
+    await clock.advance_to("2026-11-16 23:59:00")
+    assert room.reason(hass).state == "Fenster offen seit 23:50"
+
+    await clock.advance_to("2026-11-17 00:00:00")
+    assert room.reason(hass).state == "Fenster offen seit 16.11. 23:50"
+    reason_after_midnight = room.reason(hass)
+
+    await clock.advance_to("2026-11-17 06:30:00")
+    assert room.reason(hass).state == "Fenster offen seit 16.11. 23:50"
+    assert room.reason(hass).last_updated == reason_after_midnight.last_updated
 
 
 async def test_new_temperature_while_the_window_is_open_is_heated_after_closing(

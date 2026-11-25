@@ -189,7 +189,7 @@
           "room_off": "Aus",
           "room_off_until": "Aus bis {until}",
           "window_open": "Fenster offen",
-          "window_open_since": "Fenster offen seit {minutes} min",
+          "window_open_since": "Fenster offen seit {since}",
           "away": "Abwesend",
           "vacation": "Urlaub",
           "vacation_until": "Urlaub bis {until}",

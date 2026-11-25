@@ -15,6 +15,7 @@ from tests.scenario import (
     Clock,
     LivingRoom,
     Schedules,
+    WindowContact,
     block,
     change_room,
     living_room,
@@ -82,6 +83,32 @@ async def test_each_block_boundary_logs_the_new_target_with_its_reason(
     assert await _target_entries(hass, logbook, room) == [
         ("Wohnzimmer", "21 °C (Komfort bis 09:00)"),
         ("Wohnzimmer", "17 °C (Eco bis 23.11. 07:00)"),
+    ]
+
+
+async def test_open_window_logs_frost_protection_once_with_the_opening_time(
+    logbook: MockHAClientWebSocket,
+    hass: HomeAssistant,
+    clock: Clock,
+    schedules: Schedules,
+    simulated_trvs: SimulatedTrvs,
+) -> None:
+    """Airing from 08:03 to 08:20 logs frost since 08:03, then comfort again."""
+    clock.set("2026-11-16 08:00")
+    window = WindowContact(hass, "fenster_wohnzimmer")
+    room = await living_room(
+        hass, schedules, simulated_trvs, window_contacts=[window.entity_id]
+    )
+
+    await clock.advance_to("2026-11-16 08:03:00")
+    await window.open()
+    await clock.advance_to("2026-11-16 08:04:00")
+    await clock.advance_to("2026-11-16 08:20:00")
+    await window.close()
+
+    assert await _target_entries(hass, logbook, room) == [
+        ("Wohnzimmer", "7 °C (Fenster offen seit 08:03)"),
+        ("Wohnzimmer", "21 °C (Komfort bis 09:00)"),
     ]
 
 
