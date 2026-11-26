@@ -17,7 +17,7 @@ export interface GlobalTemperatures {
 }
 
 export function getRoomLevels(hass: HomeAssistant, roomId: string): Promise<RoomLevels> {
-  return hass.callWS<RoomLevels>({ type: "climate_control/room/levels", room_id: roomId });
+  return hass.callWS<RoomLevels>({ type: "hyggely/room/levels", room_id: roomId });
 }
 
 /** Change the levels given; the room applies them at once. */
@@ -27,14 +27,14 @@ export function setRoomLevels(
   changes: Partial<RoomLevels>,
 ): Promise<null> {
   return hass.callWS<null>({
-    type: "climate_control/room/set_levels",
+    type: "hyggely/room/set_levels",
     room_id: roomId,
     ...changes,
   });
 }
 
 export function getGlobalTemperatures(hass: HomeAssistant): Promise<GlobalTemperatures> {
-  return hass.callWS<GlobalTemperatures>({ type: "climate_control/house/temperatures" });
+  return hass.callWS<GlobalTemperatures>({ type: "hyggely/house/temperatures" });
 }
 
 /** Change the global temperatures given; all rooms apply them at once. */
@@ -42,5 +42,5 @@ export function setGlobalTemperatures(
   hass: HomeAssistant,
   changes: Partial<GlobalTemperatures>,
 ): Promise<null> {
-  return hass.callWS<null>({ type: "climate_control/house/set_temperatures", ...changes });
+  return hass.callWS<null>({ type: "hyggely/house/set_temperatures", ...changes });
 }

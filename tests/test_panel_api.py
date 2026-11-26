@@ -19,7 +19,7 @@ from tests.simulated_trv import SimulatedTrvs
 
 async def _subscribe(client: MockHAClientWebSocket) -> list[dict[str, Any]]:
     """Subscribe to the room overview; return the rooms it starts with."""
-    await client.send_json_auto_id({"type": "climate_control/rooms/subscribe"})
+    await client.send_json_auto_id({"type": "hyggely/rooms/subscribe"})
     response = await client.receive_json()
     assert response["success"], response
     return await _next_rooms(client)
@@ -48,7 +48,7 @@ async def _return_to_auto(
     client: MockHAClientWebSocket, room_id: str
 ) -> dict[str, Any]:
     await client.send_json_auto_id(
-        {"type": "climate_control/room/return_to_auto", "room_id": room_id}
+        {"type": "hyggely/room/return_to_auto", "room_id": room_id}
     )
     response: dict[str, Any] = await client.receive_json()
     return response
@@ -160,7 +160,7 @@ async def test_room_overview_is_refused_to_other_users(
     clock.set("2026-11-16 08:00")
     await living_room(hass, schedules, simulated_trvs)
 
-    await user.send_json_auto_id({"type": "climate_control/rooms/subscribe"})
+    await user.send_json_auto_id({"type": "hyggely/rooms/subscribe"})
     response = await user.receive_json()
 
     assert not response["success"]

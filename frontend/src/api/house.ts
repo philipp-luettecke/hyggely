@@ -26,13 +26,13 @@ export function subscribeHouse(
   onHouse: (house: House) => void,
 ): Promise<Unsubscribe> {
   return hass.connection.subscribeMessage<House>(onHouse, {
-    type: "climate_control/house/subscribe",
+    type: "hyggely/house/subscribe",
   });
 }
 
 /** Switch the house to auto or off; vacation starts with `startVacation`. */
 export function setHouseMode(hass: HomeAssistant, houseMode: "auto" | "off"): Promise<null> {
-  return hass.callWS<null>({ type: "climate_control/house/set_mode", house_mode: houseMode });
+  return hass.callWS<null>({ type: "hyggely/house/set_mode", house_mode: houseMode });
 }
 
 /**
@@ -40,7 +40,7 @@ export function setHouseMode(hass: HomeAssistant, houseMode: "auto" | "off"): Pr
  * e.g. `2026-11-20T18:00`. During a vacation this moves its end.
  */
 export function startVacation(hass: HomeAssistant, end: string): Promise<null> {
-  return hass.callWS<null>({ type: "climate_control/house/start_vacation", end });
+  return hass.callWS<null>({ type: "hyggely/house/start_vacation", end });
 }
 
 /** Error code of an end that is not in the future. */

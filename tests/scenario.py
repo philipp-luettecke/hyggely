@@ -23,7 +23,7 @@ from pytest_homeassistant.typing import MockHAClientWebSocket
 
 from tests.simulated_trv import SimulatedTrv, SimulatedTrvs
 
-DOMAIN = "climate_control"
+DOMAIN = "hyggely"
 TIME_ZONE = "Europe/Berlin"
 
 

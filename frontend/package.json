@@ -1,7 +1,7 @@
 {
-  "name": "climate-control-heating-panel",
+  "name": "hyggely-heating-panel",
   "private": true,
-  "description": "Heating panel of the climate_control integration, served as one JavaScript module.",
+  "description": "Heating panel of the Hyggely integration, served as one JavaScript module.",
   "type": "module",
   "engines": {
     "node": ">=18.19"

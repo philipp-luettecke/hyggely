@@ -25,9 +25,7 @@ def async_register_commands(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, _return_to_auto)
 
 
-@websocket_api.websocket_command(
-    {probatio.Required("type"): "climate_control/rooms/subscribe"}
-)
+@websocket_api.websocket_command({probatio.Required("type"): "hyggely/rooms/subscribe"})
 @websocket_api.require_admin
 @websocket_api.async_response
 async def _subscribe_rooms(
@@ -54,7 +52,7 @@ async def _subscribe_rooms(
 
 @websocket_api.websocket_command(
     {
-        probatio.Required("type"): "climate_control/room/return_to_auto",
+        probatio.Required("type"): "hyggely/room/return_to_auto",
         probatio.Required("room_id"): str,
     }
 )

@@ -223,6 +223,6 @@ export class HeatingPanel extends LitElement {
   ];
 }
 
-if (!customElements.get("climate-control-panel")) {
-  customElements.define("climate-control-panel", HeatingPanel);
+if (!customElements.get("hyggely-panel")) {
+  customElements.define("hyggely-panel", HeatingPanel);
 }

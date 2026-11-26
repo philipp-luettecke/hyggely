@@ -5,7 +5,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant.common import MockConfigEntry
 
-DOMAIN = "climate_control"
+DOMAIN = "hyggely"
 
 
 async def test_main_entry_is_set_up_from_the_ui_with_spec_defaults(

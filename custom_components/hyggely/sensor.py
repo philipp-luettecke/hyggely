@@ -13,7 +13,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.event import async_track_point_in_utc_time
 from homeassistant.util import dt as dt_util
 
-from . import ClimateControlConfigEntry
+from . import HyggelyConfigEntry
 from .const import ATTR_REASON_CODE, DOMAIN
 from .reason_text import async_load_reason_texts, next_local_midnight, reason_text
 from .room_controller import RoomController
@@ -21,7 +21,7 @@ from .room_controller import RoomController
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ClimateControlConfigEntry,
+    entry: HyggelyConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Add one reason sensor per room."""

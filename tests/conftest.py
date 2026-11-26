@@ -1,4 +1,4 @@
-"""Shared fixtures for climate_control tests."""
+"""Shared fixtures for Hyggely tests."""
 
 from freezegun.api import FrozenDateTimeFactory
 from homeassistant.core import HomeAssistant

@@ -16,7 +16,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from . import ClimateControlConfigEntry
+from . import HyggelyConfigEntry
 from .const import (
     DOMAIN,
     TEMPERATURE_STEP,
@@ -35,7 +35,7 @@ ATTR_OVERRIDE_EXPIRY = "override_expiry"
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ClimateControlConfigEntry,
+    entry: HyggelyConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Add one room entity per room."""

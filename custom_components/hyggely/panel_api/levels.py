@@ -67,7 +67,7 @@ def async_register_commands(hass: HomeAssistant) -> None:
 
 @websocket_api.websocket_command(
     {
-        probatio.Required("type"): "climate_control/room/levels",
+        probatio.Required("type"): "hyggely/room/levels",
         probatio.Required("room_id"): str,
     }
 )
@@ -96,7 +96,7 @@ async def _room_levels(
 
 @websocket_api.websocket_command(
     {
-        probatio.Required("type"): "climate_control/room/set_levels",
+        probatio.Required("type"): "hyggely/room/set_levels",
         probatio.Required("room_id"): str,
         probatio.Optional(CONF_COMFORT_TEMPERATURE): _TEMPERATURE,
         probatio.Optional(CONF_NIGHT_TEMPERATURE): _TEMPERATURE,
@@ -132,7 +132,7 @@ async def _set_room_levels(
 
 
 @websocket_api.websocket_command(
-    {probatio.Required("type"): "climate_control/house/temperatures"}
+    {probatio.Required("type"): "hyggely/house/temperatures"}
 )
 @websocket_api.require_admin
 @websocket_api.async_response
@@ -149,7 +149,7 @@ async def _global_temperatures(
 
 @websocket_api.websocket_command(
     {
-        probatio.Required("type"): "climate_control/house/set_temperatures",
+        probatio.Required("type"): "hyggely/house/set_temperatures",
         **{probatio.Optional(key): _TEMPERATURE for key in _GLOBAL_TEMPERATURES},
     }
 )

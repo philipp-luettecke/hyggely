@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes are listed here. Versions follow [Semantic Versioning](https://semver.org/); the version in `custom_components/climate_control/manifest.json` and the release tag are the same.
+All notable changes are listed here. Versions follow [Semantic Versioning](https://semver.org/); the version in `custom_components/hyggely/manifest.json` and the release tag are the same.
 
 ## 0.1.0 (not released yet)
 
@@ -19,7 +19,7 @@ First release. Requires Home Assistant 2026.11.
 - A turn of the knob at any TRV, Siri, Google or the app becomes a manual override of the whole room, rounded to whole degrees. It ends at the next block boundary, after a duration or at the earlier of both (default: earlier, 3 h), globally or per room. Off holds frost protection until the next block boundary. Without a block boundary both end after the override-expiry duration.
 - Window open (after 60 s) gives frost protection and restores the previous state when closed, including an override.
 - Away when all persons are gone for 30 minutes, house mode `auto`/`vacation`/`off` with a vacation end. An override wins over house off, vacation and away.
-- Service `climate_control.start_vacation` sets the vacation end and starts the vacation in one step.
+- Service `hyggely.start_vacation` sets the vacation end and starts the vacation in one step.
 - Overrides, off and the house mode survive a restart. Unreachable TRVs get their target again once they are back, staggered after a restart; a command a TRV did not take is sent once more.
 
 ### Transparency
@@ -34,3 +34,4 @@ First release. Requires Home Assistant 2026.11.
 ### Setup
 
 - The room setup dialog reminds you to give HomeKit Bridge and Google Assistant only the room thermostats, not the TRVs. The README explains both settings and the installation via HACS or by hand.
+- Own brand icon in Home Assistant and HACS. Licensed under the Apache License 2.0.

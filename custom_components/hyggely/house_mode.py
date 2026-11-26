@@ -29,7 +29,7 @@ def house_device_info(entry_id: str) -> DeviceInfo:
     return DeviceInfo(
         identifiers={(DOMAIN, entry_id)},
         translation_key="house",
-        manufacturer="Climate Control",
+        manufacturer="Hyggely",
         model="House",
         entry_type=DeviceEntryType.SERVICE,
     )

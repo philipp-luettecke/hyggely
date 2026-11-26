@@ -12,7 +12,7 @@ import pytest
 from tests.scenario import Clock, Schedules, commands, living_room
 from tests.simulated_trv import SimulatedTrvs
 
-DOMAIN = "climate_control"
+DOMAIN = "hyggely"
 
 
 def _steps(form: FlowResult[Any, Any], *fields: str) -> dict[str, Any]:

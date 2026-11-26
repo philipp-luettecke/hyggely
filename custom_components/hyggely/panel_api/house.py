@@ -33,9 +33,7 @@ def async_register_commands(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, _start_vacation)
 
 
-@websocket_api.websocket_command(
-    {probatio.Required("type"): "climate_control/house/subscribe"}
-)
+@websocket_api.websocket_command({probatio.Required("type"): "hyggely/house/subscribe"})
 @websocket_api.require_admin
 @websocket_api.async_response
 async def _subscribe_house(
@@ -94,7 +92,7 @@ async def _subscribe_house(
 
 @websocket_api.websocket_command(
     {
-        probatio.Required("type"): "climate_control/house/set_mode",
+        probatio.Required("type"): "hyggely/house/set_mode",
         probatio.Required("house_mode"): probatio.In(
             [HouseMode.AUTO.value, HouseMode.OFF.value]
         ),
@@ -114,7 +112,7 @@ async def _set_house_mode(
 
 @websocket_api.websocket_command(
     {
-        probatio.Required("type"): "climate_control/house/start_vacation",
+        probatio.Required("type"): "hyggely/house/start_vacation",
         probatio.Required("end"): cv.datetime,
     }
 )

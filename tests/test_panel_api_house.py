@@ -19,7 +19,7 @@ from tests.simulated_trv import SimulatedTrvs
 
 async def _subscribe(client: MockHAClientWebSocket) -> dict[str, Any]:
     """Subscribe to the house; return the state it starts with."""
-    await client.send_json_auto_id({"type": "climate_control/house/subscribe"})
+    await client.send_json_auto_id({"type": "hyggely/house/subscribe"})
     response = await client.receive_json()
     assert response["success"], response
     message = await client.receive_json()
@@ -44,7 +44,7 @@ async def _set_house_mode(
     client: MockHAClientWebSocket, house_mode: str
 ) -> dict[str, Any]:
     await client.send_json_auto_id(
-        {"type": "climate_control/house/set_mode", "house_mode": house_mode}
+        {"type": "hyggely/house/set_mode", "house_mode": house_mode}
     )
     response: dict[str, Any] = await client.receive_json()
     return response
@@ -52,9 +52,7 @@ async def _set_house_mode(
 
 async def _start_vacation(client: MockHAClientWebSocket, end: str) -> dict[str, Any]:
     """Start vacation until `end`, local time as the panel sends it."""
-    await client.send_json_auto_id(
-        {"type": "climate_control/house/start_vacation", "end": end}
-    )
+    await client.send_json_auto_id({"type": "hyggely/house/start_vacation", "end": end})
     response: dict[str, Any] = await client.receive_json()
     return response
 
@@ -246,9 +244,9 @@ async def test_vacation_with_an_end_not_in_the_future_is_refused(
 @pytest.mark.parametrize(
     "message",
     [
-        {"type": "climate_control/house/subscribe"},
-        {"type": "climate_control/house/set_mode", "house_mode": "off"},
-        {"type": "climate_control/house/start_vacation", "end": "2026-11-20T18:00"},
+        {"type": "hyggely/house/subscribe"},
+        {"type": "hyggely/house/set_mode", "house_mode": "off"},
+        {"type": "hyggely/house/start_vacation", "end": "2026-11-20T18:00"},
     ],
 )
 async def test_house_is_refused_to_other_users(

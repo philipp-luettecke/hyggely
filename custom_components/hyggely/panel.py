@@ -11,8 +11,8 @@ from homeassistant.core import HomeAssistant, callback
 
 from .const import DOMAIN
 
-PANEL_URL_PATH = "climate-control"
-WEBCOMPONENT_NAME = "climate-control-panel"
+PANEL_URL_PATH = "hyggely"
+WEBCOMPONENT_NAME = "hyggely-panel"
 MODULE_DIR = Path(__file__).parent / "frontend"
 MODULE_FILE = "heating-panel.js"
 STATIC_URL = f"/{DOMAIN}/frontend"

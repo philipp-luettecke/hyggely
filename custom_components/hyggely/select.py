@@ -6,14 +6,14 @@ from homeassistant.components.select import SelectEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from . import ClimateControlConfigEntry
+from . import HyggelyConfigEntry
 from .house_mode import HouseModeController, house_device_info
 from .target_resolver import HouseMode
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ClimateControlConfigEntry,
+    entry: HyggelyConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Add the house mode entity to the house device."""

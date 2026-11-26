@@ -8,13 +8,13 @@ from homeassistant.components.datetime import DateTimeEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from . import ClimateControlConfigEntry
+from . import HyggelyConfigEntry
 from .house_mode import HouseModeController, house_device_info
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ClimateControlConfigEntry,
+    entry: HyggelyConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Add the vacation end entity to the house device."""

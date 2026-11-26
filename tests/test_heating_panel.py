@@ -13,7 +13,7 @@ from pytest_homeassistant.typing import (
 from tests.scenario import Clock, Schedules, living_room, shut_down
 from tests.simulated_trv import SimulatedTrvs
 
-PANEL = "climate-control"
+PANEL = "hyggely"
 
 
 async def _panels(client: MockHAClientWebSocket) -> dict[str, Any]:

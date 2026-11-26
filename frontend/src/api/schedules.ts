@@ -61,7 +61,7 @@ export function subscribeAssignments(
   onAssignments: (assignments: ScheduleAssignments) => void,
 ): Promise<Unsubscribe> {
   return hass.connection.subscribeMessage<ScheduleAssignments>(onAssignments, {
-    type: "climate_control/schedules/subscribe",
+    type: "hyggely/schedules/subscribe",
   });
 }
 
@@ -72,7 +72,7 @@ export function assignSchedule(
   schedule: { entityId: string | null } | { scheduleId: string },
 ): Promise<null> {
   return hass.callWS<null>({
-    type: "climate_control/room/assign_schedule",
+    type: "hyggely/room/assign_schedule",
     room_id: roomId,
     ...("scheduleId" in schedule
       ? { schedule_id: schedule.scheduleId }

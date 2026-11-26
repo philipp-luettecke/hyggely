@@ -22,14 +22,14 @@ export function subscribeRooms(
 ): Promise<Unsubscribe> {
   return hass.connection.subscribeMessage<{ rooms: RoomOverview[] }>(
     (message) => onRooms(message.rooms),
-    { type: "climate_control/rooms/subscribe" },
+    { type: "hyggely/rooms/subscribe" },
   );
 }
 
 /** End the override or off of a room: it follows its schedule again. */
 export function returnToAuto(hass: HomeAssistant, roomId: string): Promise<null> {
   return hass.callWS<null>({
-    type: "climate_control/room/return_to_auto",
+    type: "hyggely/room/return_to_auto",
     room_id: roomId,
   });
 }

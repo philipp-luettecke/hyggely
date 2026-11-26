@@ -24,7 +24,7 @@ from tests.scenario import (
 )
 from tests.simulated_trv import SimulatedTrvs
 
-DOMAIN = "climate_control"
+DOMAIN = "hyggely"
 
 
 @pytest.fixture

@@ -553,32 +553,32 @@ o4?.({ LitElement: i4 });
 function subscribeRooms(hass, onRooms) {
   return hass.connection.subscribeMessage(
     (message) => onRooms(message.rooms),
-    { type: "climate_control/rooms/subscribe" }
+    { type: "hyggely/rooms/subscribe" }
   );
 }
 function returnToAuto(hass, roomId) {
   return hass.callWS({
-    type: "climate_control/room/return_to_auto",
+    type: "hyggely/room/return_to_auto",
     room_id: roomId
   });
 }
 
 // src/api/levels.ts
 function getRoomLevels(hass, roomId) {
-  return hass.callWS({ type: "climate_control/room/levels", room_id: roomId });
+  return hass.callWS({ type: "hyggely/room/levels", room_id: roomId });
 }
 function setRoomLevels(hass, roomId, changes) {
   return hass.callWS({
-    type: "climate_control/room/set_levels",
+    type: "hyggely/room/set_levels",
     room_id: roomId,
     ...changes
   });
 }
 function getGlobalTemperatures(hass) {
-  return hass.callWS({ type: "climate_control/house/temperatures" });
+  return hass.callWS({ type: "hyggely/house/temperatures" });
 }
 function setGlobalTemperatures(hass, changes) {
-  return hass.callWS({ type: "climate_control/house/set_temperatures", ...changes });
+  return hass.callWS({ type: "hyggely/house/set_temperatures", ...changes });
 }
 
 // src/i18n.ts
@@ -903,14 +903,14 @@ defineOnce("cc-global-temperatures-section", GlobalTemperaturesSection);
 // src/api/house.ts
 function subscribeHouse(hass, onHouse) {
   return hass.connection.subscribeMessage(onHouse, {
-    type: "climate_control/house/subscribe"
+    type: "hyggely/house/subscribe"
   });
 }
 function setHouseMode(hass, houseMode) {
-  return hass.callWS({ type: "climate_control/house/set_mode", house_mode: houseMode });
+  return hass.callWS({ type: "hyggely/house/set_mode", house_mode: houseMode });
 }
 function startVacation(hass, end) {
-  return hass.callWS({ type: "climate_control/house/start_vacation", end });
+  return hass.callWS({ type: "hyggely/house/start_vacation", end });
 }
 var VACATION_END_MUST_BE_AHEAD = "vacation_end_must_be_ahead";
 function formatVacationEnd(language2, vacationEnd) {
@@ -1982,12 +1982,12 @@ var WEEKDAYS = [
 ];
 function subscribeAssignments(hass, onAssignments) {
   return hass.connection.subscribeMessage(onAssignments, {
-    type: "climate_control/schedules/subscribe"
+    type: "hyggely/schedules/subscribe"
   });
 }
 function assignSchedule(hass, roomId, schedule) {
   return hass.callWS({
-    type: "climate_control/room/assign_schedule",
+    type: "hyggely/room/assign_schedule",
     room_id: roomId,
     ..."scheduleId" in schedule ? { schedule_id: schedule.scheduleId } : { entity_id: schedule.entityId }
   });
@@ -3691,8 +3691,8 @@ HeatingPanel.styles = [
       }
     `
 ];
-if (!customElements.get("climate-control-panel")) {
-  customElements.define("climate-control-panel", HeatingPanel);
+if (!customElements.get("hyggely-panel")) {
+  customElements.define("hyggely-panel", HeatingPanel);
 }
 export {
   HeatingPanel
