@@ -5,6 +5,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.translation import async_get_translations
 import pytest
 
+from .scenario import add_main_entry
+
 DOMAIN = "climate_control"
 
 SETTINGS = [
@@ -93,6 +95,43 @@ async def test_room_dialogs_are_labelled_in_the_language(
         assert all(
             texts.get(f"{prefix}.step.{step}.data.{key}") for key in ROOM_SETTINGS
         )
+
+
+@pytest.mark.parametrize(
+    ("language", "bridge", "share", "keep"),
+    [
+        (
+            "en",
+            "HomeKit Bridge",
+            "only the room thermostats",
+            "not the radiator thermostats",
+        ),
+        (
+            "de",
+            "HomeKit-Bridge",
+            "nur die Raum-Thermostate",
+            "nicht die Heizkörperthermostate",
+        ),
+    ],
+)
+async def test_adding_a_room_asks_to_share_only_room_thermostats(
+    hass: HomeAssistant, language: str, bridge: str, share: str, keep: str
+) -> None:
+    """The dialog for a new room says to give HomeKit Bridge and Google no TRVs."""
+    entry = await add_main_entry(hass)
+
+    dialog = await hass.config_entries.subentries.async_init(
+        (entry.entry_id, "room"), context={"source": SOURCE_USER}
+    )
+    texts = await async_get_translations(hass, language, "config_subentries", [DOMAIN])
+    hint = texts[
+        f"component.{DOMAIN}.config_subentries.room.step.{dialog['step_id']}.description"
+    ]
+
+    assert bridge in hint
+    assert "Google" in hint
+    assert share in hint
+    assert keep in hint
 
 
 @pytest.mark.parametrize(
