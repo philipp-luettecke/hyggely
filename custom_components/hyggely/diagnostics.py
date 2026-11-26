@@ -12,7 +12,7 @@ from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.config_entries import ConfigSubentry
 from homeassistant.core import HomeAssistant
 
-from . import ClimateControlConfigEntry
+from . import HyggelyConfigEntry
 from .const import CONF_NOTIFY_TARGETS, CONF_PERSONS
 from .room_controller import RoomController
 
@@ -20,7 +20,7 @@ TO_REDACT = {CONF_PERSONS, CONF_NOTIFY_TARGETS}
 
 
 async def async_get_config_entry_diagnostics(
-    hass: HomeAssistant, entry: ClimateControlConfigEntry
+    hass: HomeAssistant, entry: HyggelyConfigEntry
 ) -> dict[str, Any]:
     """Return the diagnostics of the main entry and its rooms."""
     return {

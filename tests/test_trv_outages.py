@@ -155,7 +155,7 @@ def _repair_issues(issue_registry: ir.IssueRegistry) -> list[ir.IssueEntry]:
     return [
         issue
         for (domain, _), issue in issue_registry.issues.items()
-        if domain == "climate_control"
+        if domain == "hyggely"
     ]
 
 

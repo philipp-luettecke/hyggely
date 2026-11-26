@@ -30,7 +30,7 @@ def async_register_commands(hass: HomeAssistant) -> None:
 
 
 @websocket_api.websocket_command(
-    {probatio.Required("type"): "climate_control/schedules/subscribe"}
+    {probatio.Required("type"): "hyggely/schedules/subscribe"}
 )
 @websocket_api.require_admin
 @callback
@@ -117,7 +117,7 @@ def _assignments(hass: HomeAssistant) -> dict[str, Any]:
 
 @websocket_api.websocket_command(
     {
-        probatio.Required("type"): "climate_control/room/assign_schedule",
+        probatio.Required("type"): "hyggely/room/assign_schedule",
         probatio.Required("room_id"): str,
         probatio.Exclusive("entity_id", "schedule"): probatio.Any(str, None),
         probatio.Exclusive("schedule_id", "schedule"): str,

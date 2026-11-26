@@ -7,7 +7,7 @@
 // different sections land in different places of it.
 import * as esbuild from "esbuild";
 
-const MODULE = "../custom_components/climate_control/frontend/heating-panel.js";
+const MODULE = "../custom_components/hyggely/frontend/heating-panel.js";
 
 const outfileArgument = process.argv.find((argument) =>
   argument.startsWith("--outfile="),

@@ -1,4 +1,4 @@
-"""Config flow for the climate_control main entry."""
+"""Config flow for the Hyggely main entry."""
 
 from __future__ import annotations
 
@@ -212,7 +212,7 @@ class RoomSubentryFlow(ConfigSubentryFlow):
         )
 
 
-class ClimateControlConfigFlow(ConfigFlow, domain=DOMAIN):
+class HyggelyConfigFlow(ConfigFlow, domain=DOMAIN):
     """Create the main entry holding the global settings."""
 
     VERSION = 1
@@ -230,9 +230,7 @@ class ClimateControlConfigFlow(ConfigFlow, domain=DOMAIN):
     ) -> ConfigFlowResult:
         """Ask for the global settings."""
         if user_input is not None:
-            return self.async_create_entry(
-                title="Climate Control", data={}, options=user_input
-            )
+            return self.async_create_entry(title="Hyggely", data={}, options=user_input)
         return self.async_show_form(
             step_id="user", data_schema=_global_settings_schema()
         )
@@ -241,10 +239,10 @@ class ClimateControlConfigFlow(ConfigFlow, domain=DOMAIN):
     @callback
     def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlow:
         """Return the options flow for the global settings."""
-        return ClimateControlOptionsFlow()
+        return HyggelyOptionsFlow()
 
 
-class ClimateControlOptionsFlow(OptionsFlow):
+class HyggelyOptionsFlow(OptionsFlow):
     """Change the global settings of the main entry; its update listener reloads."""
 
     async def async_step_init(

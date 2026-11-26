@@ -21,7 +21,7 @@ from tests.scenario import (
 )
 from tests.simulated_trv import SimulatedTrvs
 
-DOMAIN = "climate_control"
+DOMAIN = "hyggely"
 HEAT_15 = ("set_temperature", {"temperature": 15.0, "hvac_mode": "heat"})
 
 

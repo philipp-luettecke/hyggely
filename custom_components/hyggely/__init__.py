@@ -54,7 +54,7 @@ class RuntimeData:
     rooms: dict[str, RoomController] = field(default_factory=dict)
 
 
-type ClimateControlConfigEntry = ConfigEntry[RuntimeData]
+type HyggelyConfigEntry = ConfigEntry[RuntimeData]
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
@@ -66,9 +66,7 @@ async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:
     return True
 
 
-async def async_setup_entry(
-    hass: HomeAssistant, entry: ClimateControlConfigEntry
-) -> None:
+async def async_setup_entry(hass: HomeAssistant, entry: HyggelyConfigEntry) -> None:
     """Set up the main entry with one room controller per room."""
     presence = Presence(
         hass,
@@ -121,9 +119,7 @@ async def async_setup_entry(
     entry.async_on_unload(entry.add_update_listener(_async_reload))
 
 
-async def async_unload_entry(
-    hass: HomeAssistant, entry: ClimateControlConfigEntry
-) -> bool:
+async def async_unload_entry(hass: HomeAssistant, entry: HyggelyConfigEntry) -> bool:
     """Unload the main entry."""
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
@@ -150,7 +146,7 @@ def _async_register_room_device(
         config_subentry_id=subentry.subentry_id,
         identifiers={(DOMAIN, subentry.subentry_id)},
         name=subentry.title,
-        manufacturer="Climate Control",
+        manufacturer="Hyggely",
         model="Room",
         entry_type=dr.DeviceEntryType.SERVICE,
     )

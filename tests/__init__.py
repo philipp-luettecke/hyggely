@@ -1,1 +1,1 @@
-"""Tests for the climate_control integration."""
+"""Tests for the Hyggely integration."""

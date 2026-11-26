@@ -7,7 +7,7 @@ import pytest
 
 from .scenario import add_main_entry
 
-DOMAIN = "climate_control"
+DOMAIN = "hyggely"
 
 SETTINGS = [
     "persons",

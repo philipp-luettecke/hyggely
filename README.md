@@ -1,4 +1,6 @@
-# Climate Control
+<img src="custom_components/hyggely/brand/icon.png" alt="Hyggely icon" width="128" align="right">
+
+# Hyggely
 
 Home Assistant custom integration for smart, family-friendly heating control: one room thermostat per room that follows a native schedule helper, respects manual overrides and reacts to open windows, presence and vacation.
 
@@ -22,14 +24,14 @@ The integration was built for tado radiator thermostats (TRVs) connected locally
 ### HACS
 
 1. In HACS, open the menu in the top right corner and choose **Custom repositories**.
-2. Enter the URL of this repository and choose the type **Integration**.
-3. Search for **Climate Control**, download it and restart Home Assistant.
+2. Enter the URL of this repository, `https://github.com/philipp-luettecke/hyggely`, and choose the type **Integration**.
+3. Search for **Hyggely**, download it and restart Home Assistant.
 
 Updates show up in HACS. Restart Home Assistant after each update.
 
 ### Manual
 
-1. Download the latest release (or the repository) and copy the folder `custom_components/climate_control` into the `custom_components` folder of your Home Assistant configuration, so that `config/custom_components/climate_control/manifest.json` exists.
+1. Download the latest release (or the repository) and copy the folder `custom_components/hyggely` into the `custom_components` folder of your Home Assistant configuration, so that `config/custom_components/hyggely/manifest.json` exists.
 2. Restart Home Assistant.
 
 The panel is part of the integration folder (`frontend/heating-panel.js`); there is nothing to build.
@@ -38,7 +40,7 @@ The panel is part of the integration folder (`frontend/heating-panel.js`); there
 
 ### Main entry
 
-Go to **Settings → Devices & services → Add integration** and choose **Climate Control**. The dialog asks for the global settings that apply to all rooms. The integration can be added only once.
+Go to **Settings → Devices & services → Add integration** and choose **Hyggely**. The dialog asks for the global settings that apply to all rooms. The integration can be added only once.
 
 | Setting | Default | Meaning |
 |---|---|---|
@@ -102,12 +104,12 @@ The house device provides:
 
 A manual override wins over house off, vacation and away, so it gets warm when someone comes home early.
 
-### Service `climate_control.start_vacation`
+### Service `hyggely.start_vacation`
 
 Sets the vacation end and switches the house mode to vacation in one step, for automations and scripts. All rooms get the vacation temperature until the end, then the house returns to automatic.
 
 ```yaml
-action: climate_control.start_vacation
+action: hyggely.start_vacation
 data:
   end: "2026-12-27 18:00:00"
 ```
@@ -147,7 +149,7 @@ homekit:
         - climate.bathroom
 ```
 
-Use the entity IDs of your room thermostats (Settings → Entities, filter by the integration Climate Control). Apple Home then shows the modes Auto, Heat and Off of each room; Auto ends an override.
+Use the entity IDs of your room thermostats (Settings → Entities, filter by the integration Hyggely). Apple Home then shows the modes Auto, Heat and Off of each room; Auto ends an override.
 
 ## Google Assistant without Home Assistant Cloud
 
@@ -175,3 +177,7 @@ Google has no exact match for every HVAC mode; see "Climate operation modes" in 
 ## Development
 
 See [AGENTS.md](AGENTS.md) for the checks (`scripts/check`), the panel build (`scripts/panel`) and the test setup, and [CHANGELOG.md](CHANGELOG.md) for the releases.
+
+## License
+
+Hyggely is licensed under the [Apache License 2.0](LICENSE); see also [NOTICE](NOTICE). Copyright 2026 Philipp Lüttecke.

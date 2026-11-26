@@ -27,7 +27,7 @@ async def _assign(
     client: MockHAClientWebSocket, room_id: str, **schedule: Any
 ) -> dict[str, Any]:
     await client.send_json_auto_id(
-        {"type": "climate_control/room/assign_schedule", "room_id": room_id, **schedule}
+        {"type": "hyggely/room/assign_schedule", "room_id": room_id, **schedule}
     )
     response: dict[str, Any] = await client.receive_json()
     return response
@@ -35,7 +35,7 @@ async def _assign(
 
 async def _subscribe(client: MockHAClientWebSocket) -> dict[str, Any]:
     """Subscribe to the assignments; return what it starts with."""
-    await client.send_json_auto_id({"type": "climate_control/schedules/subscribe"})
+    await client.send_json_auto_id({"type": "hyggely/schedules/subscribe"})
     response = await client.receive_json()
     assert response["success"], response
     message = await client.receive_json()
@@ -250,7 +250,7 @@ async def test_assignments_are_refused_to_other_users(
     clock.set("2026-11-16 08:00")
     await living_room(hass, schedules, simulated_trvs)
 
-    await user.send_json_auto_id({"type": "climate_control/schedules/subscribe"})
+    await user.send_json_auto_id({"type": "hyggely/schedules/subscribe"})
     response = await user.receive_json()
 
     assert response["error"]["code"] == "unauthorized"

@@ -12,7 +12,7 @@ set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 root="$(pwd -P)"
-module="$root/custom_components/climate_control/frontend/heating-panel.js"
+module="$root/custom_components/hyggely/frontend/heating-panel.js"
 
 if [[ $# -ne 1 || ! "$1" =~ ^(build|check)$ ]]; then
     echo "Usage: scripts/panel build|check" >&2
@@ -23,7 +23,7 @@ if ! command -v npm >/dev/null; then
     exit 1
 fi
 
-cache_root="${XDG_CACHE_HOME:-$HOME/.cache}/climate-control"
+cache_root="${XDG_CACHE_HOME:-$HOME/.cache}/hyggely"
 stage="$cache_root/venvs/$(printf '%s' "$root" | sha256sum | cut -c1-16)/frontend"
 mkdir -p "$stage"
 

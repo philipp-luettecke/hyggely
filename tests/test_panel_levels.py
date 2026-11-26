@@ -32,7 +32,7 @@ async def _set_levels(
 ) -> dict[str, Any]:
     """Change levels of a room from the panel; wait until the room applied them."""
     response = await _send(
-        client, type="climate_control/room/set_levels", room_id=room_id, **levels
+        client, type="hyggely/room/set_levels", room_id=room_id, **levels
     )
     await hass.async_block_till_done()
     return response
@@ -51,7 +51,7 @@ async def test_room_levels_show_level_temperatures_and_lead_time(
     room = await living_room(hass, schedules, simulated_trvs, lead_minutes=45)
 
     response = await _send(
-        admin, type="climate_control/room/levels", room_id=room.subentry.subentry_id
+        admin, type="hyggely/room/levels", room_id=room.subentry.subentry_id
     )
 
     assert response["success"], response
@@ -166,7 +166,7 @@ async def test_night_warmer_than_comfort_is_saved_and_other_levels_kept(
 
     assert response["success"], response
     levels = await _send(
-        admin, type="climate_control/room/levels", room_id=room.subentry.subentry_id
+        admin, type="hyggely/room/levels", room_id=room.subentry.subentry_id
     )
     assert levels["result"] == {
         "comfort_temperature": 21.0,
@@ -187,13 +187,13 @@ async def test_room_overview_reports_levels_changed_in_the_panel(
     admin = await hass_ws_client(hass)
     clock.set("2026-11-16 08:00")
     room = await living_room(hass, schedules, simulated_trvs)
-    await admin.send_json_auto_id({"type": "climate_control/rooms/subscribe"})
+    await admin.send_json_auto_id({"type": "hyggely/rooms/subscribe"})
     assert (await admin.receive_json())["success"]
     await admin.receive_json()
 
     await admin.send_json_auto_id(
         {
-            "type": "climate_control/room/set_levels",
+            "type": "hyggely/room/set_levels",
             "room_id": room.subentry.subentry_id,
             "comfort_temperature": 23.0,
         }
@@ -222,7 +222,7 @@ async def test_levels_of_an_unknown_room_are_not_found(
     clock.set("2026-11-16 08:00")
     await living_room(hass, schedules, simulated_trvs)
 
-    shown = await _send(admin, type="climate_control/room/levels", room_id="gone")
+    shown = await _send(admin, type="hyggely/room/levels", room_id="gone")
     changed = await _set_levels(hass, admin, "gone", comfort_temperature=22.0)
 
     assert shown["error"]["code"] == "room_not_found"
@@ -243,7 +243,7 @@ async def test_levels_are_refused_to_other_users(
     room = await living_room(hass, schedules, simulated_trvs)
     room_id = room.subentry.subentry_id
 
-    shown = await _send(user, type="climate_control/room/levels", room_id=room_id)
+    shown = await _send(user, type="hyggely/room/levels", room_id=room_id)
     changed = await _set_levels(hass, user, room_id, comfort_temperature=25.0)
 
     assert shown["error"]["code"] == "unauthorized"
@@ -264,9 +264,9 @@ async def test_new_frost_temperature_from_the_panel_applies_at_once(
     room = await living_room(hass, schedules, simulated_trvs)
     await room.call(hass, "set_hvac_mode", hvac_mode="off")
 
-    shown = await _send(admin, type="climate_control/house/temperatures")
+    shown = await _send(admin, type="hyggely/house/temperatures")
     response = await _send(
-        admin, type="climate_control/house/set_temperatures", frost_temperature=8.0
+        admin, type="hyggely/house/set_temperatures", frost_temperature=8.0
     )
     await hass.async_block_till_done()
 
@@ -294,7 +294,7 @@ async def test_global_temperatures_outside_the_trv_range_are_refused(
     room = await living_room(hass, schedules, simulated_trvs)
 
     response = await _send(
-        admin, type="climate_control/house/set_temperatures", vacation_temperature=4.0
+        admin, type="hyggely/house/set_temperatures", vacation_temperature=4.0
     )
 
     assert response["error"]["code"] == "invalid_format"
@@ -314,9 +314,9 @@ async def test_global_temperatures_are_refused_to_other_users(
     clock.set("2026-11-16 08:00")
     room = await living_room(hass, schedules, simulated_trvs)
 
-    shown = await _send(user, type="climate_control/house/temperatures")
+    shown = await _send(user, type="hyggely/house/temperatures")
     changed = await _send(
-        user, type="climate_control/house/set_temperatures", away_temperature=20.0
+        user, type="hyggely/house/set_temperatures", away_temperature=20.0
     )
 
     assert shown["error"]["code"] == "unauthorized"

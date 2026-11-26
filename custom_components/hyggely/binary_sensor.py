@@ -6,14 +6,14 @@ from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from . import ClimateControlConfigEntry
+from . import HyggelyConfigEntry
 from .house_mode import house_device_info
 from .presence import Presence
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ClimateControlConfigEntry,
+    entry: HyggelyConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Add the away entity to the house device."""

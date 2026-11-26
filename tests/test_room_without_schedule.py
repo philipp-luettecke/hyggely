@@ -195,7 +195,7 @@ async def test_override_with_next_block_rule_ends_after_the_duration_without_sch
     """The rule next block boundary falls back to the duration without one."""
     clock.set("2026-11-16 08:00")
     subentry, trv = await _room_without_schedule(hass, simulated_trvs)
-    [entry] = hass.config_entries.async_entries("climate_control")
+    [entry] = hass.config_entries.async_entries("hyggely")
     await change_global_settings(hass, entry, override_expiry_policy="next_block")
 
     await _call(hass, subentry, "set_temperature", temperature=21)
@@ -233,7 +233,7 @@ async def test_schedule_assigned_in_the_room_options_applies_at_once(
     subentry, trv = await _room_without_schedule(hass, simulated_trvs)
     schedule = await schedules.create("Wohnzimmer", monday=[block("07:00", "09:00")])
 
-    [entry] = hass.config_entries.async_entries("climate_control")
+    [entry] = hass.config_entries.async_entries("hyggely")
 
     await change_room(hass, entry, subentry, schedule=schedule)
 

@@ -18,7 +18,7 @@ if ! command -v uv >/dev/null; then
     exit 1
 fi
 
-cache_root="${XDG_CACHE_HOME:-$HOME/.cache}/climate-control"
+cache_root="${XDG_CACHE_HOME:-$HOME/.cache}/hyggely"
 env_dir="$cache_root/venvs/$(printf '%s' "$root" | sha256sum | cut -c1-16)"
 export UV_PROJECT_ENVIRONMENT="$env_dir"
 export UV_CACHE_DIR="${UV_CACHE_DIR:-$cache_root/uv}"

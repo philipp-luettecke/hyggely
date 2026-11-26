@@ -159,7 +159,7 @@ Fenster offen, Abwesenheit und Urlaub greifen automatisch. Benachrichtigungen gi
 - **Hausbetriebsart** (`select`) global: `auto`, `vacation`, `off`.
 - **Urlaubsende** (`datetime`) global. Läuft es ab, wechselt die Hausbetriebsart auf `auto`.
 - **Abwesend** (`binary_sensor`) global, abgeleitet aus Anwesenheit und Verzögerung.
-- **Service `climate_control.start_vacation`** mit Pflichtfeld `end`: setzt Urlaubsende und Hausbetriebsart `vacation` in einem Schritt und lehnt ein Ende ab, das nicht in der Zukunft liegt (Ticket 20).
+- **Service `hyggely.start_vacation`** mit Pflichtfeld `end`: setzt Urlaubsende und Hausbetriebsart `vacation` in einem Schritt und lehnt ein Ende ab, das nicht in der Zukunft liegt (Ticket 20).
 - Alle eigenen Zustände (Übersteuerung samt Rückfall, Aus samt Rückfall, Hausbetriebsart, Urlaubsende) werden über einen Neustart wiederhergestellt.
 
 ### Module

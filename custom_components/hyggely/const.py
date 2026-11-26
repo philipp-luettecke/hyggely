@@ -1,8 +1,8 @@
-"""Constants for the climate_control integration."""
+"""Constants for the Hyggely integration."""
 
 from typing import Final
 
-DOMAIN: Final = "climate_control"
+DOMAIN: Final = "hyggely"
 
 EVENT_TARGET_CHANGED: Final = f"{DOMAIN}_target_changed"
 ATTR_TARGET_TEMPERATURE: Final = "target_temperature"
